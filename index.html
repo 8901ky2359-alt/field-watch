@@ -141,9 +141,30 @@
   .viewtoggle button{padding:8px 16px; background:var(--panel); font-size:12px; font-family:var(--mono); color:var(--muted); border:none; text-transform:uppercase; letter-spacing:.04em;}
   .viewtoggle button.on{background:var(--accent); color:#02181c; box-shadow:0 0 12px rgba(47,143,122,0.4) inset;}
 
-  /* ---------- MAP SCREEN (Leaflet) ---------- */
-  #screen-map .mapwrap{position:relative; height:calc(100vh - 61px); overflow:hidden;}
+  /* ---------- MAP SCREEN (Leaflet, 3-pane shell on desktop) ---------- */
+  .mapshell{display:flex; height:100vh;}
+  .mapnav{display:none; flex-direction:column; width:190px; flex-shrink:0; border-right:1px solid var(--line); background:var(--panel); padding:22px 14px; gap:2px; overflow-y:auto;}
+  .mapnav-brand{font-family:var(--hud); font-weight:800; font-size:16px; letter-spacing:.06em; margin:0 10px 20px;}
+  .mapnav-brand span{color:var(--accent);}
+  .mapnav-link{display:block; width:100%; text-align:left; padding:10px 10px; background:transparent; border:none; border-radius:2px; color:var(--muted); font-family:var(--hud); font-weight:700; font-size:13px; letter-spacing:.04em; text-transform:uppercase;}
+  .mapnav-link:hover{color:var(--text); background:rgba(47,143,122,0.08);}
+  .mapnav-link.on{color:var(--accent); background:rgba(47,143,122,0.12);}
+  .mapcenter{flex:1; display:flex; flex-direction:column; min-width:0;}
+  .mapcanvas{position:relative; flex:1; overflow:hidden;}
   #leafletMap{width:100%; height:100%; background:var(--bg);}
+  .mapinspector{display:none; width:380px; flex-shrink:0; border-left:1px solid var(--line); background:var(--bg); overflow-y:auto; padding:24px;}
+  .inspector-empty{color:var(--muted); font-size:13px; line-height:1.8; padding-top:60px; text-align:center;}
+  .inspector-close{display:flex; justify-content:flex-end; margin-bottom:-8px;}
+  .inspector-close button{background:transparent; border:1px solid var(--line); color:var(--muted); font-family:var(--mono); font-size:11px; padding:6px 10px; border-radius:2px; text-transform:uppercase; letter-spacing:.04em;}
+  .inspector-close button:hover{color:var(--accent); border-color:var(--accent);}
+  .mapinspector .section-ttl{flex-direction:column; align-items:flex-start; gap:2px;}
+  .mapinspector .env-grid{grid-template-columns:1fr;}
+  .mapinspector .detail-head{gap:16px;}
+  @media(min-width:960px){
+    .mapnav{display:flex;}
+    .mapcenter > .appbar{display:none;}
+    .mapinspector{display:block;}
+  }
   .leaflet-container{background:var(--bg); font-family:var(--body);}
   .leaflet-control-attribution{background:rgba(10,16,13,0.85) !important; color:var(--muted) !important; font-size:10px !important;}
   .leaflet-control-attribution a{color:var(--accent) !important;}
@@ -333,28 +354,42 @@
 
 <!-- ============ MAP ============ -->
 <section class="screen" id="screen-map">
-  <div class="appbar">
-    <button class="backbtn" onclick="go('top')">← TOP</button>
-    <div class="title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.3"/></svg>現場マップ</div>
-    <div class="spacer"></div>
-    <button class="backbtn" onclick="go('input')">データ入力</button>
-    <div class="viewtoggle">
-      <button class="on" onclick="go('map')">地図</button>
-      <button onclick="go('list')">リスト</button>
+  <div class="mapshell">
+    <nav class="mapnav">
+      <div class="mapnav-brand">FIELD<span>WATCH</span></div>
+      <button class="mapnav-link" onclick="go('top')">TOP</button>
+      <button class="mapnav-link on" onclick="go('map')">地図</button>
+      <button class="mapnav-link" onclick="go('list')">リスト</button>
+      <button class="mapnav-link" onclick="go('input')">データ入力</button>
+    </nav>
+    <div class="mapcenter">
+      <div class="appbar">
+        <button class="backbtn" onclick="go('top')">← TOP</button>
+        <div class="title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.3"/></svg>現場マップ</div>
+        <div class="spacer"></div>
+        <button class="backbtn" onclick="go('input')">データ入力</button>
+        <div class="viewtoggle">
+          <button class="on" onclick="go('map')">地図</button>
+          <button onclick="go('list')">リスト</button>
+        </div>
+      </div>
+      <div class="mapcanvas">
+        <div id="leafletMap"></div>
+        <div class="mapctl">
+          <button onclick="mapZoom(1)">+</button>
+          <button onclick="mapZoom(-1)">−</button>
+        </div>
+        <div class="legend hud-corners">
+          <div class="legend-ttl">◤ 除草ステータス</div>
+          <div class="row"><span class="dot good"></span>良好（30日未満）</div>
+          <div class="row"><span class="dot soon"></span>そろそろ（30〜55日）</div>
+          <div class="row"><span class="dot urgent"></span>要対応（55日以上）</div>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="mapwrap">
-    <div id="leafletMap"></div>
-    <div class="mapctl">
-      <button onclick="mapZoom(1)">+</button>
-      <button onclick="mapZoom(-1)">−</button>
-    </div>
-    <div class="legend hud-corners">
-      <div class="legend-ttl">◤ 除草ステータス</div>
-      <div class="row"><span class="dot good"></span>良好（30日未満）</div>
-      <div class="row"><span class="dot soon"></span>そろそろ（30〜55日）</div>
-      <div class="row"><span class="dot urgent"></span>要対応（55日以上）</div>
-    </div>
+    <aside class="mapinspector" id="mapInspector">
+      <div class="inspector-empty">地図上のピンをクリックすると、ここに現場の詳細が表示されます。</div>
+    </aside>
   </div>
 </section>
 
@@ -626,8 +661,10 @@ function initMap(){
       '<div class="popup-pref">'+site.pref+' ／ '+labelMap[st.level]+'（'+st.days+'日経過）</div>'+
       '<button class="popup-btn" onclick="go(\'detail\',\''+site.id+'\')">現場ページを見る →</button>'
     );
+    marker.on('click', ()=> renderInspector(site.id));
     marker.addTo(markerLayer);
   });
+  if(selectedMapSiteId && !sites.some(s=>s.id===selectedMapSiteId)) clearInspector();
   setTimeout(()=>{ if(leafletMap) leafletMap.invalidateSize(); }, 60);
 }
 function mapZoom(dir){ if(!leafletMap) return; dir>0 ? leafletMap.zoomIn() : leafletMap.zoomOut(); }
@@ -688,12 +725,9 @@ function pairedHTML(before, after, opts){
   return html;
 }
 
-function renderDetail(id){
-  const site = sites.find(s=>s.id===id);
-  if(!site){ go('list'); return; }
+function buildDetailHTML(site, scope, standalone){
   const st = statusOf(site);
   const labelMap = {good:'良好', soon:'そろそろ', urgent:'要対応'};
-  document.getElementById('detailBarTitle').textContent = site.name;
 
   const historyHtml = site.history.map(h=>{
     const {before, after} = getBeforeAfter(h);
@@ -707,7 +741,12 @@ function renderDetail(id){
     </div>`;
   }).join('') || `<div style="color:var(--muted);font-size:13px;">まだ作業履歴がありません。「データ入力」から追加できます。</div>`;
 
-  document.getElementById('detailArea').innerHTML = `
+  const thirdAction = standalone
+    ? `<button class="btn" onclick="go('map')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.3"/></svg></span>地図に戻る</button>`
+    : `<button class="btn" onclick="clearInspector()">選択を解除</button>`;
+
+  return `
+    ${scope==='inspector' ? `<div class="inspector-close"><button onclick="clearInspector()">✕ 閉じる</button></div>` : ''}
     <div class="detail-head">
       <div>
         <h1>${site.name}</h1>
@@ -726,27 +765,46 @@ function renderDetail(id){
     <div class="actionbar">
       <button class="btn primary" onclick="openReport('${site.id}')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9 12h6M9 15.5h6M9 8.5h2"/></svg></span>報告書PDFを作成</button>
       <button class="btn" onclick="go('input','${site.id}')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18.5 9.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 15.5V20Z"/><path d="M13 6l3 3"/></svg></span>作業履歴を追加</button>
-      <button class="btn" onclick="go('map')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.3"/></svg></span>地図に戻る</button>
+      ${thirdAction}
     </div>
 
-    <div class="section-ttl"><span>現在の天気 ／ 生育環境データ</span><span id="envUpdated" style="font-family:var(--mono);color:var(--muted);font-weight:400;">取得中…</span></div>
+    <div class="section-ttl"><span>現在の天気 ／ 生育環境データ</span><span id="${scope}-envUpdated" style="font-family:var(--mono);color:var(--muted);font-weight:400;">取得中…</span></div>
     <div class="env-grid">
       <div class="env-card hud-corners">
         <div class="lbl"><span>TODAY'S WEATHER</span><span>${site.pref}</span></div>
-        <div id="wxArea"><div class="wx-loading">気象データを取得しています…</div></div>
+        <div id="${scope}-wxArea"><div class="wx-loading">気象データを取得しています…</div></div>
       </div>
       <div class="env-card hud-corners">
         <div class="lbl"><span>草の生育推定（積算気温ベース）</span><span></span></div>
         <div class="grass-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c8 0 13-5 13-13 0-1 0-2-.3-3C9 3.3 5 8 5 16v3Z"/><path d="M5 19c2-4 5-7 9-9"/></svg>${site.grass.type}</div>
-        <div id="gddArea"><div class="wx-loading">前回作業日からの気温データを集計中…</div></div>
+        <div id="${scope}-gddArea"><div class="wx-loading">前回作業日からの気温データを集計中…</div></div>
       </div>
     </div>
 
     <div class="section-ttl"><span>作業履歴 ／ BEFORE・AFTER</span><span>${site.history.length}件</span></div>
     ${historyHtml}
   `;
+}
 
-  loadEnvironmentData(site);
+function renderDetail(id){
+  const site = sites.find(s=>s.id===id);
+  if(!site){ go('list'); return; }
+  document.getElementById('detailBarTitle').textContent = site.name;
+  document.getElementById('detailArea').innerHTML = buildDetailHTML(site, 'detail', true);
+  loadEnvironmentData(site, 'detail');
+}
+
+let selectedMapSiteId = null;
+function renderInspector(id){
+  const site = sites.find(s=>s.id===id);
+  if(!site) return;
+  selectedMapSiteId = id;
+  document.getElementById('mapInspector').innerHTML = buildDetailHTML(site, 'inspector', false);
+  loadEnvironmentData(site, 'inspector');
+}
+function clearInspector(){
+  selectedMapSiteId = null;
+  document.getElementById('mapInspector').innerHTML = `<div class="inspector-empty">地図上のピンをクリックすると、ここに現場の詳細が表示されます。</div>`;
 }
 
 /* ---------------- WEATHER / GROWTH (Open-Meteo, no API key) ---------------- */
@@ -771,15 +829,21 @@ function weatherIcon(code){
 }
 const WEATHER_DESC = {0:'快晴',1:'晴れ',2:'晴れ時々曇り',3:'曇り',45:'霧',48:'霧',51:'小雨',53:'雨',55:'強い雨',61:'雨',63:'雨',65:'大雨',71:'雪',73:'雪',75:'大雪',80:'にわか雨',81:'にわか雨',82:'激しいにわか雨',95:'雷雨',96:'雷雨',99:'雷雨'};
 
-async function loadEnvironmentData(site){
-  const wxArea = document.getElementById('wxArea');
-  const gddArea = document.getElementById('gddArea');
-  const updatedTag = document.getElementById('envUpdated');
+const envTokens = {detail:0, inspector:0};
+async function loadEnvironmentData(site, scope){
+  const myToken = ++envTokens[scope];
+  const stale = () => envTokens[scope] !== myToken;
+
+  const wxArea = document.getElementById(`${scope}-wxArea`);
+  const gddArea = document.getElementById(`${scope}-gddArea`);
+  const updatedTag = document.getElementById(`${scope}-envUpdated`);
+  if(!wxArea || !gddArea || !updatedTag) return;
 
   try{
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${site.lat}&longitude=${site.lng}&current=temperature_2m,weather_code,precipitation&timezone=Asia%2FTokyo`;
     const res = await fetch(url);
     const data = await res.json();
+    if(stale()) return;
     const c = data.current;
     const desc = WEATHER_DESC[c.weather_code] || '—';
     wxArea.innerHTML = `
@@ -791,8 +855,9 @@ async function loadEnvironmentData(site){
         </div>
       </div>`;
   }catch(e){
-    wxArea.innerHTML = `<div class="wx-loading">天気データを取得できませんでした（通信環境をご確認ください）</div>`;
+    if(!stale()) wxArea.innerHTML = `<div class="wx-loading">天気データを取得できませんでした（通信環境をご確認ください）</div>`;
   }
+  if(stale()) return;
 
   if(!site.history.length){
     gddArea.innerHTML = `<div class="wx-loading">作業履歴がないため積算気温を計算できません。</div>`;
@@ -807,6 +872,7 @@ async function loadEnvironmentData(site){
     const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${site.lat}&longitude=${site.lng}&start_date=${lastDate}&end_date=${endStr}&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo`;
     const res = await fetch(url);
     const data = await res.json();
+    if(stale()) return;
     const tmax = data.daily.temperature_2m_max, tmin = data.daily.temperature_2m_min;
     let gdd = 0;
     for(let i=0;i<tmax.length;i++){
@@ -824,10 +890,10 @@ async function loadEnvironmentData(site){
       <div class="env-note">${verdict}<br>${site.grass.note}</div>
     `;
   }catch(e){
-    gddArea.innerHTML = `<div class="wx-loading">気温データを取得できませんでした</div>`;
+    if(!stale()) gddArea.innerHTML = `<div class="wx-loading">気温データを取得できませんでした</div>`;
   }
 
-  updatedTag.textContent = '実データ連携（Open-Meteo）';
+  if(!stale()) updatedTag.textContent = '実データ連携（Open-Meteo）';
 }
 
 function gaugeSVG(st){
