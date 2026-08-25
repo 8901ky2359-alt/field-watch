@@ -9,17 +9,16 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{
-    --bg:#0a100d;
-    --panel:#111a16;
-    --panel2:#0f1a1652;
-    --line:#28382f;
-    --text:#e9f1ec;
-    --muted:#84998c;
-    --accent:#2f8f7a;  /* precision teal — brand / interactive */
-    --accent2:#3a4f8f; /* deep indigo — trust, reserved */
-    --good:#4caf6e;    /* nominal / healthy */
-    --soon:#d9a441;    /* caution */
-    --urgent:#c1473d;  /* alert */
+    --bg:#f6f8f6;
+    --panel:#ffffff;
+    --line:#dde4de;
+    --text:#182019;
+    --muted:#66796c;
+    --accent:#1f7a68;  /* precision teal — brand / interactive */
+    --accent2:#33508f; /* deep indigo — trust, reserved */
+    --good:#1d7a43;    /* nominal / healthy */
+    --soon:#a3690a;    /* caution */
+    --urgent:#c23b30;  /* alert */
     --disp:'Zen Kaku Gothic New',sans-serif;
     --hud:'Barlow Condensed','Zen Kaku Gothic New',sans-serif;
     --body:'Rajdhani','Noto Sans JP',sans-serif;
@@ -29,15 +28,9 @@
   html,body{background:var(--bg); color:var(--text); font-family:var(--body); font-size:15.5px; height:100%;}
   a{color:inherit;}
   button{font-family:var(--body); cursor:pointer;}
-  ::selection{background:var(--accent); color:#020506;}
+  ::selection{background:var(--accent); color:#fff;}
   svg{display:block;}
 
-  body{
-    background-image:
-      linear-gradient(rgba(47,143,122,0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(47,143,122,0.05) 1px, transparent 1px);
-    background-size:42px 42px;
-  }
   .hud-corners{position:relative;}
   .hud-corners::before,.hud-corners::after{content:''; position:absolute; width:12px; height:12px; pointer-events:none; z-index:2;}
   .hud-corners::before{top:-1px; left:-1px; border-top:2px solid var(--line); border-left:2px solid var(--line);}
@@ -52,8 +45,8 @@
   #screen-top{
     position:relative;
     background:
-      radial-gradient(ellipse at 20% -10%, rgba(47,143,122,0.10), transparent 55%),
-      radial-gradient(ellipse at 90% 10%, rgba(76,175,110,0.08), transparent 45%),
+      radial-gradient(ellipse at 20% -10%, rgba(31,122,104,0.07), transparent 55%),
+      radial-gradient(ellipse at 90% 10%, rgba(29,122,67,0.06), transparent 45%),
       var(--bg);
     overflow:hidden;
   }
@@ -81,17 +74,17 @@
     display:flex; align-items:center; gap:10px; transition:.15s ease; letter-spacing:.06em; text-transform:uppercase;
     clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
   }
-  .btn:hover{border-color:var(--accent); transform:translateY(-1px); box-shadow:0 4px 14px rgba(47,143,122,0.2);}
-  .btn.primary{background:var(--accent); color:#06120e; border-color:var(--accent); box-shadow:0 4px 16px rgba(47,143,122,0.28);}
-  .btn.primary:hover{background:#3fab92;}
+  .btn:hover{border-color:var(--accent); transform:translateY(-1px); box-shadow:0 3px 10px rgba(0,0,0,0.08);}
+  .btn.primary{background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 3px 10px rgba(31,122,104,0.22);}
+  .btn.primary:hover{background:#195f52;}
   .btn .arrow{font-family:var(--mono); opacity:.7;}
   .btn-icon{display:inline-flex; align-items:center;}
   .btn-icon svg{width:15px; height:15px;}
 
   .hero-panel{
-    background:linear-gradient(180deg, rgba(47,143,122,0.04), transparent), var(--panel);
+    background:var(--panel);
     border:1px solid var(--line); border-radius:2px; padding:26px;
-    box-shadow:0 0 0 1px rgba(47,143,122,0.06), 0 20px 60px rgba(0,0,0,0.4);
+    box-shadow:0 1px 3px rgba(0,0,0,0.05), 0 10px 30px rgba(24,32,25,0.05);
   }
   .hero-panel .ttl{font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.1em; margin-bottom:16px; display:flex; justify-content:space-between;}
   .stat-row{display:flex; justify-content:space-between; padding:13px 0; border-bottom:1px dashed var(--line); align-items:center;}
@@ -130,7 +123,7 @@
   .appbar{
     display:flex; align-items:center; gap:14px; padding:16px 5vw; border-bottom:1px solid var(--line);
     background:var(--bg); position:sticky; top:0; z-index:500;
-    box-shadow:0 1px 0 rgba(47,143,122,0.15);
+    box-shadow:0 1px 2px rgba(24,32,25,0.04);
   }
   .backbtn{font-family:var(--mono); font-size:12px; color:var(--muted); border:1px solid var(--line); background:var(--panel); padding:9px 14px; border-radius:2px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
   .backbtn:hover{color:var(--accent); border-color:var(--accent);}
@@ -139,7 +132,7 @@
   .appbar .spacer{flex:1;}
   .viewtoggle{display:flex; border:1px solid var(--line); border-radius:2px; overflow:hidden;}
   .viewtoggle button{padding:8px 16px; background:var(--panel); font-size:12px; font-family:var(--mono); color:var(--muted); border:none; text-transform:uppercase; letter-spacing:.04em;}
-  .viewtoggle button.on{background:var(--accent); color:#02181c; box-shadow:0 0 12px rgba(47,143,122,0.4) inset;}
+  .viewtoggle button.on{background:var(--accent); color:#fff;}
 
   /* ---------- MAP SCREEN (Leaflet, 3-pane shell on desktop) ---------- */
   .mapshell{display:flex; height:100vh;}
@@ -147,12 +140,12 @@
   .mapnav-brand{font-family:var(--hud); font-weight:800; font-size:16px; letter-spacing:.06em; margin:0 10px 20px;}
   .mapnav-brand span{color:var(--accent);}
   .mapnav-link{display:block; width:100%; text-align:left; padding:10px 10px; background:transparent; border:none; border-radius:2px; color:var(--muted); font-family:var(--hud); font-weight:700; font-size:13px; letter-spacing:.04em; text-transform:uppercase;}
-  .mapnav-link:hover{color:var(--text); background:rgba(47,143,122,0.08);}
-  .mapnav-link.on{color:var(--accent); background:rgba(47,143,122,0.12);}
+  .mapnav-link:hover{color:var(--text); background:rgba(31,122,104,0.07);}
+  .mapnav-link.on{color:var(--accent); background:rgba(31,122,104,0.1);}
   .mapcenter{flex:1; display:flex; flex-direction:column; min-width:0;}
   .mapcanvas{position:relative; flex:1; overflow:hidden;}
   #leafletMap{width:100%; height:100%; background:var(--bg);}
-  .mapinspector{display:none; width:380px; flex-shrink:0; border-left:1px solid var(--line); background:var(--bg); overflow-y:auto; padding:24px;}
+  .mapinspector{display:none; width:380px; flex-shrink:0; border-left:1px solid var(--line); background:var(--panel); overflow-y:auto; padding:24px;}
   .inspector-empty{color:var(--muted); font-size:13px; line-height:1.8; padding-top:60px; text-align:center;}
   .inspector-close{display:flex; justify-content:flex-end; margin-bottom:-8px;}
   .inspector-close button{background:transparent; border:1px solid var(--line); color:var(--muted); font-family:var(--mono); font-size:11px; padding:6px 10px; border-radius:2px; text-transform:uppercase; letter-spacing:.04em;}
@@ -166,28 +159,28 @@
     .mapinspector{display:block;}
   }
   .leaflet-container{background:var(--bg); font-family:var(--body);}
-  .leaflet-control-attribution{background:rgba(10,16,13,0.85) !important; color:var(--muted) !important; font-size:10px !important;}
+  .leaflet-control-attribution{background:rgba(255,255,255,0.85) !important; color:var(--muted) !important; font-size:10px !important;}
   .leaflet-control-attribution a{color:var(--accent) !important;}
-  .leaflet-popup-content-wrapper{background:var(--panel); color:var(--text); border:1px solid var(--accent); border-radius:2px; box-shadow:0 0 20px rgba(47,143,122,0.25);}
+  .leaflet-popup-content-wrapper{background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:2px; box-shadow:0 4px 20px rgba(24,32,25,0.14);}
   .leaflet-popup-tip{background:var(--panel);}
   .leaflet-popup-content{margin:12px 14px; font-family:var(--body); min-width:170px;}
   .leaflet-popup-close-button{color:var(--muted) !important;}
-  .site-tooltip.leaflet-tooltip{background:transparent; border:none; box-shadow:none; color:var(--muted); font-family:var(--mono); font-size:10.5px; padding:0 0 0 4px;}
+  .site-tooltip.leaflet-tooltip{background:rgba(255,255,255,0.9); border:none; box-shadow:0 1px 3px rgba(24,32,25,0.15); color:var(--text); font-family:var(--mono); font-size:10.5px; padding:2px 6px; border-radius:2px;}
   .site-tooltip.leaflet-tooltip::before{display:none;}
   .urgent-marker{animation:mapPulse 2s ease-in-out infinite;}
-  @keyframes mapPulse{0%,100%{filter:drop-shadow(0 0 0 rgba(193,71,61,.7));} 50%{filter:drop-shadow(0 0 7px rgba(193,71,61,.9));}}
+  @keyframes mapPulse{0%,100%{filter:drop-shadow(0 0 0 rgba(194,59,48,.6));} 50%{filter:drop-shadow(0 0 6px rgba(194,59,48,.8));}}
   .mapctl{position:absolute; top:16px; right:16px; z-index:401; display:flex; gap:8px;}
-  .mapctl button{width:32px; height:32px; background:var(--panel); border:1px solid var(--line); color:var(--accent); font-family:var(--mono); font-size:16px; border-radius:2px;}
+  .mapctl button{width:32px; height:32px; background:var(--panel); border:1px solid var(--line); color:var(--accent); font-family:var(--mono); font-size:16px; border-radius:2px; box-shadow:0 1px 3px rgba(24,32,25,0.08);}
   .mapctl button:hover{border-color:var(--accent);}
   .legend{
-    position:absolute; bottom:20px; left:20px; z-index:401; background:rgba(8,18,20,0.92); backdrop-filter:blur(4px);
-    border:1px solid var(--line); padding:14px 16px; border-radius:2px; font-size:12px;
+    position:absolute; bottom:20px; left:20px; z-index:401; background:rgba(255,255,255,0.94); backdrop-filter:blur(4px);
+    border:1px solid var(--line); padding:14px 16px; border-radius:2px; font-size:12px; box-shadow:0 2px 10px rgba(24,32,25,0.08);
   }
   .legend .legend-ttl{font-family:var(--mono);color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
   .legend .row{display:flex; align-items:center; margin:5px 0; color:var(--muted); font-family:var(--mono);}
   .popup-name{font-family:var(--disp); font-weight:700; font-size:13.5px; margin-bottom:4px;}
   .popup-pref{font-size:11.5px; color:var(--muted); margin-bottom:8px; font-family:var(--mono);}
-  .popup-btn{font-family:var(--mono); font-size:11px; background:var(--accent); color:#02181c; border:none; padding:6px 10px; border-radius:2px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; cursor:pointer;}
+  .popup-btn{font-family:var(--mono); font-size:11px; background:var(--accent); color:#fff; border:none; padding:6px 10px; border-radius:2px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; cursor:pointer;}
 
   /* ---------- LIST SCREEN ---------- */
   #screen-list .listwrap{padding:22px 5vw 60px;}
@@ -201,12 +194,12 @@
     display:grid; grid-template-columns:auto 1.4fr 1fr 1fr auto; align-items:center; gap:18px;
     border:1px solid var(--line); background:var(--panel); padding:16px 18px; border-radius:2px; cursor:pointer;
   }
-  .site-row:hover{border-color:var(--accent);}
+  .site-row:hover{border-color:var(--accent); box-shadow:0 2px 8px rgba(24,32,25,0.06);}
   .badge{padding:5px 10px; border-radius:2px; font-family:var(--mono); font-size:11px; white-space:nowrap; text-align:center; text-transform:uppercase; letter-spacing:.06em;}
-  .badge.good{background:rgba(76,175,110,0.12); color:var(--good); border:1px solid rgba(76,175,110,0.45); box-shadow:0 0 10px rgba(76,175,110,0.15) inset;}
-  .badge.soon{background:rgba(217,164,65,0.12); color:var(--soon); border:1px solid rgba(217,164,65,0.45); box-shadow:0 0 10px rgba(217,164,65,0.15) inset;}
-  .badge.urgent{background:rgba(193,71,61,0.14); color:var(--urgent); border:1px solid rgba(193,71,61,0.5); box-shadow:0 0 10px rgba(193,71,61,0.2) inset; animation:pulseAlert 1.8s ease-in-out infinite;}
-  @keyframes pulseAlert{0%,100%{box-shadow:0 0 10px rgba(193,71,61,0.2) inset;} 50%{box-shadow:0 0 18px rgba(193,71,61,0.5) inset;}}
+  .badge.good{background:rgba(29,122,67,0.1); color:var(--good); border:1px solid rgba(29,122,67,0.35);}
+  .badge.soon{background:rgba(163,105,10,0.1); color:var(--soon); border:1px solid rgba(163,105,10,0.35);}
+  .badge.urgent{background:rgba(194,59,48,0.1); color:var(--urgent); border:1px solid rgba(194,59,48,0.4); animation:pulseAlert 1.8s ease-in-out infinite;}
+  @keyframes pulseAlert{0%,100%{opacity:1;} 50%{opacity:.7;}}
   .site-row .name{font-family:var(--disp); font-weight:700; font-size:14.5px;}
   .site-row .pref{color:var(--muted); font-size:12.5px; margin-top:2px;}
   .site-row .field{font-size:12px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.03em;}
@@ -231,15 +224,15 @@
   .env-card{border:1px solid var(--line); background:var(--panel); border-radius:2px; padding:18px 20px;}
   .env-card .lbl{font-family:var(--mono); color:var(--muted); font-size:11px; letter-spacing:.08em; margin-bottom:10px; display:flex; justify-content:space-between; text-transform:uppercase;}
   .wx-now{display:flex; align-items:center; gap:16px;}
-  .wx-now .icon{color:var(--accent); filter:drop-shadow(0 0 6px rgba(47,143,122,0.35));}
+  .wx-now .icon{color:var(--accent);}
   .wx-now .icon svg{width:34px; height:34px;}
   .wx-now .temp{font-family:var(--hud); font-weight:900; font-size:26px; color:var(--accent);}
   .wx-now .desc{color:var(--muted); font-size:12.5px; margin-top:2px; font-family:var(--mono);}
   .wx-loading{color:var(--muted); font-size:12.5px; font-family:var(--mono);}
-  .gdd-bar-track{height:8px; background:#0f2426; border-radius:2px; overflow:hidden; margin:10px 0 8px; border:1px solid var(--line);}
-  .gdd-bar-fill{height:100%; border-radius:2px; transition:width .5s ease; box-shadow:0 0 10px currentColor;}
+  .gdd-bar-track{height:8px; background:#eaefe9; border-radius:2px; overflow:hidden; margin:10px 0 8px; border:1px solid var(--line);}
+  .gdd-bar-fill{height:100%; border-radius:2px; transition:width .5s ease;}
   .gdd-row{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); font-family:var(--mono);}
-  .grass-tag{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; background:rgba(76,175,110,0.1); color:var(--good); border:1px solid rgba(76,175,110,0.35); padding:4px 10px; border-radius:2px; margin-bottom:8px; text-transform:uppercase; letter-spacing:.04em;}
+  .grass-tag{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; background:rgba(29,122,67,0.08); color:var(--good); border:1px solid rgba(29,122,67,0.3); padding:4px 10px; border-radius:2px; margin-bottom:8px; text-transform:uppercase; letter-spacing:.04em;}
   .grass-tag svg{width:12px; height:12px;}
   .env-note{font-size:12.5px; color:var(--muted); line-height:1.8; margin-top:8px;}
   @media(max-width:700px){ .env-grid{grid-template-columns:1fr;} }
@@ -257,7 +250,7 @@
   .ba-pairs{display:flex; flex-direction:column; gap:10px; margin-top:14px;}
   .ba-pair{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .ba-pair img, .ba-empty{width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:3px; border:1px solid var(--line);}
-  .ba-empty{display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:11px; font-family:var(--mono); border-style:dashed; background:var(--panel);}
+  .ba-empty{display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:11px; font-family:var(--mono); border-style:dashed; background:var(--bg);}
   .ba-cap{font-family:var(--mono); font-size:9.5px; color:var(--muted); text-align:center; margin-top:3px;}
 
   /* ---------- INPUT SCREEN ---------- */
@@ -308,7 +301,7 @@
 <body>
 
 <!-- ============ TOP / LP ============ -->
-<section class="screen active" id="screen-top">
+<section class="screen" id="screen-top">
   <div class="topnav">
     <div class="brand">FIELD<span>WATCH</span></div>
     <div class="tag">SOLAR SITE MAINTENANCE MANAGEMENT</div>
@@ -353,7 +346,7 @@
 </section>
 
 <!-- ============ MAP ============ -->
-<section class="screen" id="screen-map">
+<section class="screen active" id="screen-map">
   <div class="mapshell">
     <nav class="mapnav">
       <div class="mapnav-brand">FIELD<span>WATCH</span></div>
@@ -638,7 +631,7 @@ let markerLayer = null;
 function initMap(){
   if(!leafletMap){
     leafletMap = L.map('leafletMap', { zoomControl:false }).setView([37.6, 138.5], 5);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19
@@ -646,13 +639,13 @@ function initMap(){
     markerLayer = L.layerGroup().addTo(leafletMap);
   }
   markerLayer.clearLayers();
-  const colorMap = {good:'#4caf6e', soon:'#d9a441', urgent:'#c1473d'};
+  const colorMap = {good:'#1d7a43', soon:'#a3690a', urgent:'#c23b30'};
   const labelMap = {good:'良好', soon:'そろそろ', urgent:'要対応'};
   sites.forEach(site=>{
     const st = statusOf(site);
     const c = colorMap[st.level];
     const marker = L.circleMarker([site.lat, site.lng], {
-      radius: 8, color:'#050a0b', weight:2, fillColor:c, fillOpacity:0.9,
+      radius: 8, color:'#ffffff', weight:2, fillColor:c, fillOpacity:0.95,
       className: st.level==='urgent' ? 'urgent-marker' : ''
     });
     marker.bindTooltip(site.name.replace('WEST-L ',''), {permanent:true, direction:'right', offset:[10,0], className:'site-tooltip'});
@@ -696,8 +689,8 @@ function renderList(){
 
 /* ---------------- DETAIL ---------------- */
 function ph(label, tone){ // placeholder swatch, used only when no real photo was attached
-  const bg = tone==='before' ? '241a12' : '10201a';
-  const fg = tone==='before' ? 'd9a441' : '4caf6e';
+  const bg = tone==='before' ? 'fbeee0' : 'e8f5ec';
+  const fg = tone==='before' ? 'a3690a' : '1d7a43';
   return `https://placehold.co/400x300/${bg}/${fg}?text=${encodeURIComponent(label)}&font=roboto`;
 }
 
@@ -756,7 +749,7 @@ function buildDetailHTML(site, scope, standalone){
         ${gaugeSVG(st)}
         <div class="txt">
           <div class="label">CURRENT STATUS</div>
-          <div class="val" style="color:${({good:'#4caf6e',soon:'#d9a441',urgent:'#c1473d'})[st.level]}">${labelMap[st.level]}（${site.history.length ? st.days+'日経過' : 'データなし'}）</div>
+          <div class="val" style="color:${({good:'#1d7a43',soon:'#a3690a',urgent:'#c23b30'})[st.level]}">${labelMap[st.level]}（${site.history.length ? st.days+'日経過' : 'データなし'}）</div>
           <div class="sub">${nextAdvice(site, st)}</div>
         </div>
       </div>
@@ -880,7 +873,7 @@ async function loadEnvironmentData(site, scope){
       gdd += Math.max(mean - site.grass.baseTemp, 0);
     }
     const pct = Math.min(gdd / site.grass.target * 100, 100);
-    const color = pct>=100 ? '#c1473d' : pct>=65 ? '#d9a441' : '#4caf6e';
+    const color = pct>=100 ? '#c23b30' : pct>=65 ? '#a3690a' : '#1d7a43';
     const verdict = pct>=100 ? '刈り取り目安の積算気温を超過。除草作業を推奨します。'
                   : pct>=65 ? '目安に近づいています。現地確認をおすすめします。'
                   : '積算気温はまだ目安に達していません。';
@@ -898,10 +891,10 @@ async function loadEnvironmentData(site, scope){
 
 function gaugeSVG(st){
   const pct = Math.min(st.days/70, 1);
-  const color = ({good:'#4caf6e',soon:'#d9a441',urgent:'#c1473d'})[st.level];
+  const color = ({good:'#1d7a43',soon:'#a3690a',urgent:'#c23b30'})[st.level];
   const r=26, c=2*Math.PI*r, off = c*(1-pct);
   return `<svg width="64" height="64" viewBox="0 0 64 64">
-    <circle cx="32" cy="32" r="${r}" stroke="#1c2822" stroke-width="6" fill="none"/>
+    <circle cx="32" cy="32" r="${r}" stroke="#e6eae6" stroke-width="6" fill="none"/>
     <circle cx="32" cy="32" r="${r}" stroke="${color}" stroke-width="6" fill="none"
       stroke-dasharray="${c}" stroke-dashoffset="${off}" stroke-linecap="round" transform="rotate(-90 32 32)"/>
     <text x="32" y="37" text-anchor="middle" font-family="IBM Plex Mono" font-size="13" fill="${color}" font-weight="600">${st.days}</text>
@@ -1062,6 +1055,9 @@ function submitSite(ev){
   populateSiteSelect(id);
   switchInputTab('history');
 }
+
+/* ---------------- INITIAL LOAD ---------------- */
+initMap();
 </script>
 </body>
 </html>
