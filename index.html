@@ -507,75 +507,29 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ---------------- DATA MODEL ---------------- */
+/* ---------------- DATA MODEL (Cloudflare D1 + R2 via Pages Functions) ---------------- */
 const TODAY = new Date();
 
-const MOCK_SITES = [
-  {id:'sakura', name:'WEST-L 佐倉発電所', pref:'千葉県佐倉市', capacity:'2.4MW', lat:35.7211, lng:140.2222,
-   grass:{type:'セイタカアワダチソウ・イネ科混生', baseTemp:8, target:280, note:'高温期に成長が早い種。積算気温の影響を受けやすい。'},
-   history:[
-     {date:'2026-06-20', type:'除草作業', before:3, after:3, note:'南面のり面の伸びが早い。次回は8月中旬〜下旬目安と現地判断。'},
-     {date:'2026-04-10', type:'除草作業', before:2, after:2, note:'冬期分の刈り残しを含め全面対応。'}
-   ]},
-  {id:'ishioka', name:'WEST-L 石岡発電所', pref:'茨城県石岡市', capacity:'1.8MW', lat:36.1889, lng:140.2914,
-   grass:{type:'チガヤ主体', baseTemp:10, target:320, note:'比較的成長は緩やか。西側はパネル影で生育やや遅め。'},
-   history:[
-     {date:'2026-07-15', type:'除草作業', before:2, after:3, note:'パネル影になる西側は生育やや遅め。'}
-   ]},
-  {id:'nasu', name:'WEST-L 那須発電所', pref:'栃木県那須町', capacity:'3.1MW', lat:37.0333, lng:140.0167,
-   grass:{type:'シバ類主体', baseTemp:12, target:360, note:'冷涼地のため生育は緩やか。標高があり気温が上がりにくい。'},
-   history:[
-     {date:'2026-08-10', type:'除草作業', before:3, after:4, note:'定期メンテのみ。特記事項なし。'},
-     {date:'2026-06-05', type:'除草作業', before:2, after:2, note:''}
-   ]},
-  {id:'sendai', name:'WEST-L 仙台発電所', pref:'宮城県仙台市', capacity:'2.0MW', lat:38.2682, lng:140.8694,
-   grass:{type:'イネ科雑草（メヒシバ等）', baseTemp:9, target:300, note:'降雨が多いと成長が加速しやすい種。'},
-   history:[
-     {date:'2026-07-20', type:'除草作業', before:3, after:3, note:'降雨が多く生育やや早い。次回9月上旬前に確認推奨。'}
-   ]},
-  {id:'osaki', name:'WEST-L 大崎発電所', pref:'宮城県大崎市', capacity:'2.7MW', lat:38.5754, lng:140.9629,
-   grass:{type:'イネ科雑草（メヒシバ等）', baseTemp:9, target:300, note:'仙台発電所と同系統の雑草構成。'},
-   history:[
-     {date:'2026-08-15', type:'除草作業', before:2, after:3, note:'実施直後。良好な状態を維持。'}
-   ]},
-  {id:'kitami', name:'WEST-L 北見発電所', pref:'北海道北見市', capacity:'4.0MW', lat:43.8036, lng:143.8933,
-   grass:{type:'エゾヨモギ・イネ科混生', baseTemp:11, target:340, note:'冷涼だが夏場の日照で一気に伸びる。広範囲のため要注意。'},
-   history:[
-     {date:'2026-06-15', type:'除草作業', before:3, after:3, note:'広範囲のため要員2名体制で実施。次回対応が遅れ気味。'},
-     {date:'2026-04-25', type:'除草作業', before:2, after:2, note:''}
-   ]},
-  {id:'narita', name:'WEST-L 成田発電所', pref:'千葉県成田市', capacity:'1.5MW', lat:35.7767, lng:140.3189,
-   grass:{type:'セイタカアワダチソウ主体', baseTemp:8, target:280, note:'越境個体あり。高温期の成長が速い種。'},
-   history:[
-     {date:'2026-05-30', type:'除草作業', before:2, after:2, note:'長期未対応。周辺からの越境も見られるため優先度高。'}
-   ]},
-];
-
-/* ---- user-entered data, persisted per-browser in localStorage ---- */
-const STORE_KEY = 'fieldwatch_data_v1';
-function loadStore(){
-  try{
-    const raw = JSON.parse(localStorage.getItem(STORE_KEY));
-    return raw && raw.sites && raw.historyBySite ? raw : {sites:[], historyBySite:{}};
-  }catch(e){ return {sites:[], historyBySite:{}}; }
-}
-function saveStore(store){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
-
 let sites = [];
-function rebuildSites(){
-  const store = loadStore();
-  const merged = [
-    ...MOCK_SITES.map(s=>({...s, history:s.history.map(h=>({...h}))})),
-    ...store.sites.map(s=>({...s, history:(s.history||[]).map(h=>({...h}))})),
-  ];
-  merged.forEach(s=>{
-    const extra = store.historyBySite[s.id];
-    if(extra && extra.length) s.history = [...extra.map(h=>({...h})), ...s.history];
-    s.history.sort((a,b)=> new Date(b.date) - new Date(a.date));
-  });
-  sites = merged;
+let sitesLoadFailed = false;
+let sitesReadyResolve;
+const sitesReadyPromise = new Promise((res)=>{ sitesReadyResolve = res; });
+
+async function loadSites(){
+  try{
+    const res = await fetch('/api/sites');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    data.forEach(s=> s.history.sort((a,b)=> new Date(b.date) - new Date(a.date)) );
+    sites = data;
+    sitesLoadFailed = false;
+  }catch(e){
+    console.error('Failed to load sites:', e);
+    sites = [];
+    sitesLoadFailed = true;
+  }
+  sitesReadyResolve();
 }
-rebuildSites();
 
 /* ---------------- STATUS LOGIC ---------------- */
 function daysSince(dateStr){
@@ -597,7 +551,8 @@ function nextAdvice(site, st){
 }
 
 /* ---------------- NAV ---------------- */
-function go(screen, id){
+async function go(screen, id){
+  await sitesReadyPromise;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+screen).classList.add('active');
   window.scrollTo(0,0);
@@ -622,7 +577,6 @@ function renderTopStats(){
   document.getElementById('stripSites').textContent = sites.length;
   document.getElementById('stripUrgent').textContent = counts.urgent;
 }
-renderTopStats();
 
 /* ---------------- MAP (Leaflet, real map data) ---------------- */
 let leafletMap = null;
@@ -686,23 +640,15 @@ function renderList(){
       <div class="field">経過日数<b>${r.site.history.length ? r.st.days+' 日' : '—'}</b></div>
       <div class="chev">詳細 →</div>
     </div>
-  `).join('') || `<div style="color:var(--muted);padding:30px;text-align:center;">該当する現場がありません</div>`;
+  `).join('') || (sitesLoadFailed
+    ? `<div style="color:var(--urgent);padding:30px;text-align:center;">データの読み込みに失敗しました。通信環境をご確認のうえ、ページを再読み込みしてください。</div>`
+    : `<div style="color:var(--muted);padding:30px;text-align:center;">該当する現場がありません</div>`);
 }
 
 /* ---------------- DETAIL ---------------- */
-function ph(label, tone){ // placeholder swatch, used only when no real photo was attached
-  const bg = tone==='before' ? 'fbeee0' : 'e8f5ec';
-  const fg = tone==='before' ? 'a3690a' : '1d7a43';
-  return `https://placehold.co/400x300/${bg}/${fg}?text=${encodeURIComponent(label)}&font=roboto`;
-}
-
 function getBeforeAfter(h){
-  const before = h.beforeImages
-    ? h.beforeImages.map((src,i)=>({src, label:'Before '+(i+1)}))
-    : Array.from({length:h.before||0}, (_,i)=>({src:ph('Before '+(i+1),'before'), label:'Before '+(i+1)}));
-  const after = h.afterImages
-    ? h.afterImages.map((src,i)=>({src, label:'After '+(i+1)}))
-    : Array.from({length:h.after||0}, (_,i)=>({src:ph('After '+(i+1),'after'), label:'After '+(i+1)}));
+  const before = (h.beforeImages||[]).map((src,i)=>({src, label:'Before '+(i+1)}));
+  const after = (h.afterImages||[]).map((src,i)=>({src, label:'After '+(i+1)}));
   return {before, after};
 }
 
@@ -980,18 +926,6 @@ function previewSlot(input){
   reader.onload = e => { img.src = e.target.result; img.style.display='block'; };
   reader.readAsDataURL(file);
 }
-function collectSlotImages(kind){
-  const area = document.getElementById(kind==='before'?'hfBeforeSlots':'hfAfterSlots');
-  const inputs = [...area.querySelectorAll('input[type=file]')];
-  return Promise.all(inputs.map((inp,i)=> new Promise(resolve=>{
-    const file = inp.files[0];
-    if(!file){ resolve(ph((kind==='before'?'Before ':'After ')+(i+1), kind)); return; }
-    const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result);
-    reader.readAsDataURL(file);
-  })));
-}
-
 async function submitHistory(ev){
   ev.preventDefault();
   const siteId = document.getElementById('hfSite').value;
@@ -999,29 +933,43 @@ async function submitHistory(ev){
   const type = document.getElementById('hfType').value;
   const note = document.getElementById('hfNote').value.trim();
   const msg = document.getElementById('hfMsg');
-  if(!siteId || !date){ msg.textContent = '対象現場と実施日を入力してください。'; msg.style.color = 'var(--urgent)'; return; }
+  if(!siteId || !date){ msg.style.color = 'var(--urgent)'; msg.textContent = '対象現場と実施日を入力してください。'; return; }
 
-  const beforeImages = await collectSlotImages('before');
-  const afterImages = await collectSlotImages('after');
-  const entry = {date, type, note, beforeImages, afterImages};
+  msg.style.color = 'var(--muted)';
+  msg.textContent = '保存しています…';
 
-  const store = loadStore();
-  if(!store.historyBySite[siteId]) store.historyBySite[siteId] = [];
-  store.historyBySite[siteId].unshift(entry);
-  saveStore(store);
-  rebuildSites();
-  renderTopStats();
+  const fd = new FormData();
+  fd.append('date', date);
+  fd.append('type', type);
+  fd.append('note', note);
+  document.querySelectorAll('#hfBeforeSlots input[type=file]').forEach(inp=>{
+    if(inp.files[0]) fd.append('before', inp.files[0]);
+  });
+  document.querySelectorAll('#hfAfterSlots input[type=file]').forEach(inp=>{
+    if(inp.files[0]) fd.append('after', inp.files[0]);
+  });
 
-  msg.style.color = 'var(--good)';
-  msg.textContent = '保存しました。地図・リスト・現場ページに反映されています。';
-  ev.target.reset();
-  document.getElementById('hfBeforeSlots').innerHTML='';
-  document.getElementById('hfAfterSlots').innerHTML='';
-  document.getElementById('hfDate').value = new Date().toISOString().slice(0,10);
-  populateSiteSelect(siteId);
+  try{
+    const res = await fetch(`/api/sites/${encodeURIComponent(siteId)}/history`, { method:'POST', body: fd });
+    if(!res.ok) throw new Error(await res.text());
+    await loadSites();
+    renderTopStats();
+
+    msg.style.color = 'var(--good)';
+    msg.textContent = '保存しました。地図・リスト・現場ページに反映されています。';
+    ev.target.reset();
+    document.getElementById('hfBeforeSlots').innerHTML='';
+    document.getElementById('hfAfterSlots').innerHTML='';
+    document.getElementById('hfDate').value = new Date().toISOString().slice(0,10);
+    populateSiteSelect(siteId);
+  }catch(e){
+    console.error(e);
+    msg.style.color = 'var(--urgent)';
+    msg.textContent = '保存に失敗しました。通信環境をご確認のうえ、もう一度お試しください。';
+  }
 }
 
-function submitSite(ev){
+async function submitSite(ev){
   ev.preventDefault();
   const msg = document.getElementById('sfMsg');
   const name = document.getElementById('sfName').value.trim();
@@ -1040,26 +988,40 @@ function submitSite(ev){
     return;
   }
 
-  const id = 'site-' + Date.now().toString(36);
-  const newSite = {id, name, pref, capacity, lat, lng, grass:{type:grassType, baseTemp, target, note}, history:[]};
+  msg.style.color = 'var(--muted)';
+  msg.textContent = '登録しています…';
 
-  const store = loadStore();
-  store.sites.push(newSite);
-  saveStore(store);
-  rebuildSites();
-  renderTopStats();
+  try{
+    const res = await fetch('/api/sites', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, pref, capacity, lat, lng, grass:{type:grassType, baseTemp, target, note} })
+    });
+    if(!res.ok) throw new Error(await res.text());
+    const { id } = await res.json();
+    await loadSites();
+    renderTopStats();
 
-  msg.style.color = 'var(--good)';
-  msg.textContent = '現場を登録しました。「作業履歴を追加」タブから記録を追加できます。';
-  ev.target.reset();
-  document.getElementById('sfBaseTemp').value = 10;
-  document.getElementById('sfTarget').value = 300;
-  populateSiteSelect(id);
-  switchInputTab('history');
+    msg.style.color = 'var(--good)';
+    msg.textContent = '現場を登録しました。「作業履歴を追加」タブから記録を追加できます。';
+    ev.target.reset();
+    document.getElementById('sfBaseTemp').value = 10;
+    document.getElementById('sfTarget').value = 300;
+    populateSiteSelect(id);
+    switchInputTab('history');
+  }catch(e){
+    console.error(e);
+    msg.style.color = 'var(--urgent)';
+    msg.textContent = '登録に失敗しました。通信環境をご確認のうえ、もう一度お試しください。';
+  }
 }
 
 /* ---------------- INITIAL LOAD ---------------- */
-initMap();
+(async function boot(){
+  await loadSites();
+  renderTopStats();
+  initMap();
+})();
 </script>
 </body>
 </html>
