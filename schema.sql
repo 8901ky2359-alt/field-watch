@@ -56,4 +56,4 @@ CREATE INDEX idx_expenses_user ON expenses(user_id);
 CREATE INDEX idx_sessions_user ON sessions(user_id);
 
 -- After your own account registers through the site, promote it to admin with:
--- UPDATE users SET role='admin' WHERE email='you@example.com';
+-- UPDATE users SET role='admin' WHERE email='8901.ky.2359@gmail.com';
