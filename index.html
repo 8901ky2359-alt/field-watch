@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FIELDWATCH | 現場管理システム</title>
+<title>WORKLOG | 現場日当・請求管理</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{
     --bg:#f6f8f6;
@@ -14,11 +13,11 @@
     --line:#dde4de;
     --text:#182019;
     --muted:#66796c;
-    --accent:#1f7a68;  /* precision teal — brand / interactive */
-    --accent2:#33508f; /* deep indigo — trust, reserved */
-    --good:#1d7a43;    /* nominal / healthy */
-    --soon:#a3690a;    /* caution */
-    --urgent:#c23b30;  /* alert */
+    --accent:#1f7a68;  /* brand / interactive */
+    --accent2:#33508f; /* deep indigo — reserved */
+    --good:#1d7a43;
+    --soon:#a3690a;
+    --urgent:#c23b30;
     --disp:'Zen Kaku Gothic New',sans-serif;
     --hud:'Barlow Condensed','Zen Kaku Gothic New',sans-serif;
     --body:'Rajdhani','Noto Sans JP',sans-serif;
@@ -31,997 +30,702 @@
   ::selection{background:var(--accent); color:#fff;}
   svg{display:block;}
 
-  .hud-corners{position:relative;}
-  .hud-corners::before,.hud-corners::after{content:''; position:absolute; width:12px; height:12px; pointer-events:none; z-index:2;}
-  .hud-corners::before{top:-1px; left:-1px; border-top:2px solid var(--line); border-left:2px solid var(--line);}
-  .hud-corners::after{bottom:-1px; right:-1px; border-bottom:2px solid var(--line); border-right:2px solid var(--line);}
-  .hud-corners:hover:not(.warn)::before,.hud-corners:hover:not(.warn)::after{border-color:var(--accent);}
-  .hud-corners.warn::before,.hud-corners.warn::after{border-color:var(--urgent);}
+  .hidden{display:none !important;}
 
-  .screen{display:none; min-height:100vh;}
-  .screen.active{display:block;}
-
-  /* ---------- TOP / LP ---------- */
-  #screen-top{
-    position:relative;
+  /* ---------- SHELL ---------- */
+  #authScreen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:6vh 6vw;
     background:
       radial-gradient(ellipse at 20% -10%, rgba(31,122,104,0.07), transparent 55%),
       radial-gradient(ellipse at 90% 10%, rgba(29,122,67,0.06), transparent 45%),
       var(--bg);
-    overflow:hidden;
   }
-  .topnav{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:22px 6vw; border-bottom:1px solid var(--line);
-  }
-  .brand{font-family:var(--hud); font-weight:800; font-size:21px; letter-spacing:0.08em;}
+  .auth-card{width:100%; max-width:420px; background:var(--panel); border:1px solid var(--line); border-radius:2px; padding:36px 32px; box-shadow:0 1px 3px rgba(0,0,0,0.05), 0 10px 30px rgba(24,32,25,0.06);}
+  .brand{font-family:var(--hud); font-weight:800; font-size:22px; letter-spacing:0.06em; text-align:center; margin-bottom:6px;}
   .brand span{color:var(--accent);}
-  .brand::before{content:'◆ '; color:var(--good); font-size:12px;}
-  .topnav .tag{font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:0.12em;}
-  .topnav .tag::before{content:'// '; color:var(--accent);}
-
-  .hero{
-    padding:9vh 6vw 8vh; display:grid; grid-template-columns: 1.15fr 0.85fr; gap:40px; align-items:center;
-  }
-  .hero-eyebrow{font-family:var(--mono); color:var(--accent); font-size:12px; letter-spacing:0.18em; margin-bottom:18px; text-transform:uppercase;}
-  .hero h1{font-family:var(--disp); font-weight:900; font-size:clamp(30px,4.4vw,54px); line-height:1.25; letter-spacing:0.01em;}
-  .hero h1 em{font-style:normal; color:var(--accent);}
-  .hero p{margin-top:20px; color:var(--muted); font-size:15.5px; line-height:1.9; max-width:46ch;}
-  .hero-cta{display:flex; gap:14px; margin-top:36px; flex-wrap:wrap;}
-  .btn{
-    font-family:var(--hud); font-weight:700; font-size:13px; padding:16px 26px; border-radius:2px;
-    border:1px solid var(--line); background:var(--panel); color:var(--text);
-    display:flex; align-items:center; gap:10px; transition:.15s ease; letter-spacing:.06em; text-transform:uppercase;
-    clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
-  }
-  .btn:hover{border-color:var(--accent); transform:translateY(-1px); box-shadow:0 3px 10px rgba(0,0,0,0.08);}
-  .btn.primary{background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 3px 10px rgba(31,122,104,0.22);}
-  .btn.primary:hover{background:#195f52;}
-  .btn .arrow{font-family:var(--mono); opacity:.7;}
-  .btn-icon{display:inline-flex; align-items:center;}
-  .btn-icon svg{width:15px; height:15px;}
-
-  .hero-panel{
-    background:var(--panel);
-    border:1px solid var(--line); border-radius:2px; padding:26px;
-    box-shadow:0 1px 3px rgba(0,0,0,0.05), 0 10px 30px rgba(24,32,25,0.05);
-  }
-  .hero-panel .ttl{font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.1em; margin-bottom:16px; display:flex; justify-content:space-between;}
-  .stat-row{display:flex; justify-content:space-between; padding:13px 0; border-bottom:1px dashed var(--line); align-items:center;}
-  .stat-row:last-child{border-bottom:none;}
-  .stat-row .k{color:var(--muted); font-size:13px;}
-  .stat-row .v{font-family:var(--mono); font-weight:600; font-size:15px;}
-  .dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:8px;}
-  .dot.good{background:var(--good);} .dot.soon{background:var(--soon);} .dot.urgent{background:var(--urgent);}
-
-  .strip{
-    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
-    display:grid; grid-template-columns:repeat(4,1fr);
-  }
-  .strip div{padding:22px 6vw; border-right:1px solid var(--line); min-width:0;}
-  .strip div:last-child{border-right:none;}
-  .strip .num{font-family:var(--mono); font-size:22px; color:var(--accent); font-weight:600;}
-  .strip .lbl{color:var(--muted); font-size:12px; margin-top:4px;}
-
-  .howto{padding:8vh 6vw;}
-  .howto h2{font-family:var(--hud); font-size:20px; margin-bottom:34px; letter-spacing:.08em; text-transform:uppercase;}
-  .howto-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:22px;}
-  .howto-card{border:1px solid var(--line); border-radius:2px; padding:22px; background:var(--panel);}
-  .howto-card .n{font-family:var(--mono); color:var(--accent); font-size:12px;}
-  .howto-card h3{font-family:var(--disp); margin:10px 0 8px; font-size:16px;}
-  .howto-card p{color:var(--muted); font-size:13.5px; line-height:1.8;}
-
-  .footer-note{padding:26px 6vw 50px; color:var(--muted); font-size:11.5px; font-family:var(--mono);}
-
-  @media(max-width:820px){
-    .hero{grid-template-columns:1fr;}
-    .strip{grid-template-columns:1fr 1fr;}
-    .howto-grid{grid-template-columns:1fr;}
-  }
-
-  /* ---------- SHARED APP CHROME ---------- */
-  .appbar{
-    display:flex; align-items:center; gap:14px; padding:16px 5vw; border-bottom:1px solid var(--line);
-    background:var(--bg); position:sticky; top:0; z-index:500;
-    box-shadow:0 1px 2px rgba(24,32,25,0.04);
-  }
-  .backbtn{font-family:var(--mono); font-size:12px; color:var(--muted); border:1px solid var(--line); background:var(--panel); padding:9px 14px; border-radius:2px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
-  .backbtn:hover{color:var(--accent); border-color:var(--accent);}
-  .appbar .title{font-family:var(--hud); font-weight:700; font-size:14px; letter-spacing:.05em; display:flex; align-items:center; gap:8px;}
-  .appbar .title svg{width:16px; height:16px; color:var(--accent);}
-  .appbar .spacer{flex:1;}
-  .viewtoggle{display:flex; border:1px solid var(--line); border-radius:2px; overflow:hidden;}
-  .viewtoggle button{padding:8px 16px; background:var(--panel); font-size:12px; font-family:var(--mono); color:var(--muted); border:none; text-transform:uppercase; letter-spacing:.04em;}
-  .viewtoggle button.on{background:var(--accent); color:#fff;}
-
-  /* ---------- MAP SCREEN (Leaflet, 3-pane shell on desktop) ---------- */
-  .mapshell{display:flex; height:100vh;}
-  .mapnav{display:none; flex-direction:column; width:190px; flex-shrink:0; border-right:1px solid var(--line); background:var(--panel); padding:22px 14px; gap:2px; overflow-y:auto;}
-  .mapnav-brand{font-family:var(--hud); font-weight:800; font-size:16px; letter-spacing:.06em; margin:0 10px 20px;}
-  .mapnav-brand span{color:var(--accent);}
-  .mapnav-link{display:block; width:100%; text-align:left; padding:10px 10px; background:transparent; border:none; border-radius:2px; color:var(--muted); font-family:var(--hud); font-weight:700; font-size:13px; letter-spacing:.04em; text-transform:uppercase;}
-  .mapnav-link:hover{color:var(--text); background:rgba(31,122,104,0.07);}
-  .mapnav-link.on{color:var(--accent); background:rgba(31,122,104,0.1);}
-  .mapcenter{flex:1; display:flex; flex-direction:column; min-width:0;}
-  .mapcanvas{position:relative; flex:1; overflow:hidden;}
-  #leafletMap{width:100%; height:100%; background:var(--bg);}
-  .mapinspector{display:none; width:380px; flex-shrink:0; border-left:1px solid var(--line); background:var(--panel); overflow-y:auto; padding:24px;}
-  .inspector-empty{color:var(--muted); font-size:13px; line-height:1.8; padding-top:60px; text-align:center;}
-  .inspector-close{display:flex; justify-content:flex-end; margin-bottom:-8px;}
-  .inspector-close button{background:transparent; border:1px solid var(--line); color:var(--muted); font-family:var(--mono); font-size:11px; padding:6px 10px; border-radius:2px; text-transform:uppercase; letter-spacing:.04em;}
-  .inspector-close button:hover{color:var(--accent); border-color:var(--accent);}
-  .mapinspector .section-ttl{flex-direction:column; align-items:flex-start; gap:2px;}
-  .mapinspector .env-grid{grid-template-columns:1fr;}
-  .mapinspector .detail-head{gap:16px;}
-  @media(min-width:960px){
-    .mapnav{display:flex;}
-    .mapcenter > .appbar{display:none;}
-    .mapinspector{display:block;}
-  }
-  .leaflet-container{background:var(--bg); font-family:var(--body);}
-  .leaflet-control-attribution{background:rgba(255,255,255,0.85) !important; color:var(--muted) !important; font-size:10px !important;}
-  .leaflet-control-attribution a{color:var(--accent) !important;}
-  .leaflet-popup-content-wrapper{background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:2px; box-shadow:0 4px 20px rgba(24,32,25,0.14);}
-  .leaflet-popup-tip{background:var(--panel);}
-  .leaflet-popup-content{margin:12px 14px; font-family:var(--body); min-width:170px;}
-  .leaflet-popup-close-button{color:var(--muted) !important;}
-  .site-tooltip.leaflet-tooltip{background:rgba(255,255,255,0.9); border:none; box-shadow:0 1px 3px rgba(24,32,25,0.15); color:var(--text); font-family:var(--mono); font-size:10.5px; padding:2px 6px; border-radius:2px;}
-  .site-tooltip.leaflet-tooltip::before{display:none;}
-  .urgent-marker{animation:mapPulse 2s ease-in-out infinite;}
-  @keyframes mapPulse{0%,100%{filter:drop-shadow(0 0 0 rgba(194,59,48,.6));} 50%{filter:drop-shadow(0 0 6px rgba(194,59,48,.8));}}
-  .mapctl{position:absolute; top:16px; right:16px; z-index:401; display:flex; gap:8px;}
-  .mapctl button{width:32px; height:32px; background:var(--panel); border:1px solid var(--line); color:var(--accent); font-family:var(--mono); font-size:16px; border-radius:2px; box-shadow:0 1px 3px rgba(24,32,25,0.08);}
-  .mapctl button:hover{border-color:var(--accent);}
-  .legend{
-    position:absolute; bottom:20px; left:20px; z-index:401; background:rgba(255,255,255,0.94); backdrop-filter:blur(4px);
-    border:1px solid var(--line); padding:14px 16px; border-radius:2px; font-size:12px; box-shadow:0 2px 10px rgba(24,32,25,0.08);
-  }
-  .legend .legend-ttl{font-family:var(--mono);color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
-  .legend .row{display:flex; align-items:center; margin:5px 0; color:var(--muted); font-family:var(--mono);}
-  .popup-name{font-family:var(--disp); font-weight:700; font-size:13.5px; margin-bottom:4px;}
-  .popup-pref{font-size:11.5px; color:var(--muted); margin-bottom:8px; font-family:var(--mono);}
-  .popup-btn{font-family:var(--mono); font-size:11px; background:var(--accent); color:#fff; border:none; padding:6px 10px; border-radius:2px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; cursor:pointer;}
-
-  /* ---------- LIST SCREEN ---------- */
-  #screen-list .listwrap{padding:22px 5vw 60px;}
-  .filters{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px;}
-  .filters input, .filters select{
-    background:var(--panel); border:1px solid var(--line); color:var(--text); padding:10px 12px; border-radius:3px; font-size:13px; font-family:var(--body);
-  }
-  .filters input{flex:1; min-width:180px;}
-  .site-list{display:flex; flex-direction:column; gap:10px;}
-  .site-row{
-    display:grid; grid-template-columns:auto 1.4fr 1fr 1fr auto; align-items:center; gap:18px;
-    border:1px solid var(--line); background:var(--panel); padding:16px 18px; border-radius:2px; cursor:pointer;
-  }
-  .site-row:hover{border-color:var(--accent); box-shadow:0 2px 8px rgba(24,32,25,0.06);}
-  .badge{padding:5px 10px; border-radius:2px; font-family:var(--mono); font-size:11px; white-space:nowrap; text-align:center; text-transform:uppercase; letter-spacing:.06em;}
-  .badge.good{background:rgba(29,122,67,0.1); color:var(--good); border:1px solid rgba(29,122,67,0.35);}
-  .badge.soon{background:rgba(163,105,10,0.1); color:var(--soon); border:1px solid rgba(163,105,10,0.35);}
-  .badge.urgent{background:rgba(194,59,48,0.1); color:var(--urgent); border:1px solid rgba(194,59,48,0.4); animation:pulseAlert 1.8s ease-in-out infinite;}
-  @keyframes pulseAlert{0%,100%{opacity:1;} 50%{opacity:.7;}}
-  .site-row .name{font-family:var(--disp); font-weight:700; font-size:14.5px;}
-  .site-row .pref{color:var(--muted); font-size:12.5px; margin-top:2px;}
-  .site-row .field{font-size:12px; color:var(--muted); font-family:var(--mono); text-transform:uppercase; letter-spacing:.03em;}
-  .site-row .field b{color:var(--text); font-family:var(--mono); font-weight:600; display:block; font-size:13.5px; text-transform:none;}
-  .chev{color:var(--accent); font-family:var(--mono);}
-  @media(max-width:760px){ .site-row{grid-template-columns:1fr; text-align:left;} }
-
-  /* ---------- DETAIL SCREEN ---------- */
-  #screen-detail .detailwrap{padding:26px 5vw 70px; max-width:980px; margin:0 auto;}
-  .detail-head{display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; margin-bottom:28px;}
-  .detail-head h1{font-family:var(--disp); font-size:26px; font-weight:900;}
-  .detail-head .meta{color:var(--muted); font-size:13px; margin-top:6px; font-family:var(--mono);}
-  .gauge-card{
-    display:flex; align-items:center; gap:16px; border:1px solid var(--line); background:var(--panel); border-radius:2px; padding:16px 20px;
-  }
-  .gauge-card .txt{font-size:12.5px;}
-  .gauge-card .txt .label{color:var(--muted); font-family:var(--mono); font-size:11px;}
-  .gauge-card .txt .val{font-family:var(--disp); font-weight:900; font-size:16px; margin-top:2px;}
-  .gauge-card .txt .sub{color:var(--muted); font-size:11.5px; margin-top:3px;}
-
-  .env-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px;}
-  .env-card{border:1px solid var(--line); background:var(--panel); border-radius:2px; padding:18px 20px;}
-  .env-card .lbl{font-family:var(--mono); color:var(--muted); font-size:11px; letter-spacing:.08em; margin-bottom:10px; display:flex; justify-content:space-between; text-transform:uppercase;}
-  .wx-now{display:flex; align-items:center; gap:16px;}
-  .wx-now .icon{color:var(--accent);}
-  .wx-now .icon svg{width:34px; height:34px;}
-  .wx-now .temp{font-family:var(--hud); font-weight:900; font-size:26px; color:var(--accent);}
-  .wx-now .desc{color:var(--muted); font-size:12.5px; margin-top:2px; font-family:var(--mono);}
-  .wx-loading{color:var(--muted); font-size:12.5px; font-family:var(--mono);}
-  .gdd-bar-track{height:8px; background:#eaefe9; border-radius:2px; overflow:hidden; margin:10px 0 8px; border:1px solid var(--line);}
-  .gdd-bar-fill{height:100%; border-radius:2px; transition:width .5s ease;}
-  .gdd-row{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); font-family:var(--mono);}
-  .grass-tag{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; background:rgba(29,122,67,0.08); color:var(--good); border:1px solid rgba(29,122,67,0.3); padding:4px 10px; border-radius:2px; margin-bottom:8px; text-transform:uppercase; letter-spacing:.04em;}
-  .grass-tag svg{width:12px; height:12px;}
-  .env-note{font-size:12.5px; color:var(--muted); line-height:1.8; margin-top:8px;}
-  @media(max-width:700px){ .env-grid{grid-template-columns:1fr;} }
-
-  .section-ttl{font-family:var(--mono); color:var(--accent); font-size:12px; letter-spacing:.14em; margin:34px 0 14px; display:flex; justify-content:space-between; align-items:center; text-transform:uppercase;}
-  .section-ttl span:first-child::before{content:'▸ ';}
-  .actionbar{display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;}
-
-  .history-item{border:1px solid var(--line); background:var(--panel); border-radius:2px; padding:20px; margin-bottom:14px;}
-  .history-top{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;}
-  .history-date{font-family:var(--mono); font-weight:600; font-size:14px; color:var(--accent);}
-  .history-type{font-size:12px; color:var(--muted); margin-top:2px;}
-  .history-note{font-size:13px; color:var(--muted); margin-top:10px; line-height:1.7;}
-
-  .ba-pairs{display:flex; flex-direction:column; gap:10px; margin-top:14px;}
-  .ba-pair{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .ba-pair img, .ba-empty{width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:3px; border:1px solid var(--line);}
-  .ba-empty{display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:11px; font-family:var(--mono); border-style:dashed; background:var(--bg);}
-  .ba-cap{font-family:var(--mono); font-size:9.5px; color:var(--muted); text-align:center; margin-top:3px;}
-
-  /* ---------- INPUT SCREEN ---------- */
-  .inputwrap{padding:26px 5vw 70px; max-width:720px; margin:0 auto;}
-  .input-tabs{display:flex; gap:4px; margin-bottom:26px; border-bottom:1px solid var(--line);}
-  .input-tabs button{padding:10px 18px; background:transparent; border:none; color:var(--muted); font-family:var(--hud); font-size:13px; letter-spacing:.05em; text-transform:uppercase; border-bottom:2px solid transparent; margin-bottom:-1px;}
-  .input-tabs button.on{color:var(--accent); border-bottom-color:var(--accent);}
-  .input-form{display:flex; flex-direction:column; gap:16px;}
+  .auth-sub{text-align:center; color:var(--muted); font-size:12.5px; font-family:var(--mono); margin-bottom:28px; letter-spacing:.04em;}
+  .auth-tabs{display:flex; gap:4px; margin-bottom:22px; border-bottom:1px solid var(--line);}
+  .auth-tabs button{flex:1; padding:10px; background:transparent; border:none; color:var(--muted); font-family:var(--hud); font-weight:700; font-size:13px; letter-spacing:.05em; text-transform:uppercase; border-bottom:2px solid transparent; margin-bottom:-1px;}
+  .auth-tabs button.on{color:var(--accent); border-bottom-color:var(--accent);}
+  .field-row{margin-bottom:16px;}
   .field-row label{display:block; font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.05em;}
   .field-row input, .field-row select, .field-row textarea{
-    width:100%; background:var(--panel); border:1px solid var(--line); color:var(--text); padding:10px 12px; border-radius:2px; font-size:14px; font-family:var(--body);
+    width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); padding:11px 12px; border-radius:2px; font-size:14.5px; font-family:var(--body);
   }
   .field-row input:focus, .field-row select:focus, .field-row textarea:focus{outline:1px solid var(--accent); border-color:var(--accent);}
-  .field-row textarea{resize:vertical; font-family:var(--body);}
-  .field-row.two{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
-  .field-hint{font-size:11.5px; color:var(--muted); margin-top:4px;}
-  .photo-slots{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px;}
-  .photo-slot{display:flex; flex-direction:column; gap:6px; border:1px solid var(--line); background:var(--panel); border-radius:2px; padding:8px;}
-  .photo-slot .slot-lbl{font-family:var(--mono); font-size:10px; color:var(--muted); text-transform:uppercase;}
-  .photo-slot input[type=file]{font-size:10.5px; color:var(--muted); padding:0; border:none; background:none;}
-  .photo-slot .prev{width:100%; aspect-ratio:4/3; object-fit:cover; border:1px solid var(--line); border-radius:2px; background:var(--bg); display:none;}
-  .input-msg{font-family:var(--mono); font-size:12.5px; color:var(--good); min-height:1.2em;}
-  @media(max-width:640px){ .field-row.two{grid-template-columns:1fr;} }
+  .field-row.two{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .btn{
+    font-family:var(--hud); font-weight:700; font-size:13px; padding:14px 22px; border-radius:2px;
+    border:1px solid var(--line); background:var(--panel); color:var(--text);
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:.15s ease; letter-spacing:.06em; text-transform:uppercase;
+  }
+  .btn:hover{border-color:var(--accent); box-shadow:0 3px 10px rgba(0,0,0,0.08);}
+  .btn.primary{background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 3px 10px rgba(31,122,104,0.22); width:100%;}
+  .btn.primary:hover{background:#195f52;}
+  .btn.block{width:100%;}
+  .btn.small{padding:8px 14px; font-size:11.5px;}
+  .btn.danger{color:var(--urgent); border-color:rgba(194,59,48,0.4);}
+  .btn.danger:hover{border-color:var(--urgent);}
+  .auth-msg{font-family:var(--mono); font-size:12.5px; min-height:1.2em; margin-top:14px; text-align:center;}
 
-  /* ---------- REPORT (PRINT) ---------- */
-  #reportPrintArea{display:none;}
+  /* ---------- APP SHELL ---------- */
+  #appShell{display:none; min-height:100vh;}
+  #appShell.active{display:flex;}
+  .side{width:210px; flex-shrink:0; border-right:1px solid var(--line); background:var(--panel); padding:24px 16px; display:flex; flex-direction:column; gap:2px;}
+  .side-brand{font-family:var(--hud); font-weight:800; font-size:18px; letter-spacing:.06em; margin:0 8px 6px;}
+  .side-brand span{color:var(--accent);}
+  .side-who{font-size:11.5px; color:var(--muted); font-family:var(--mono); margin:0 8px 22px;}
+  .side-link{display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 10px; background:transparent; border:none; border-radius:2px; color:var(--muted); font-family:var(--hud); font-weight:700; font-size:13px; letter-spacing:.04em; text-transform:uppercase;}
+  .side-link svg{width:15px; height:15px; flex-shrink:0;}
+  .side-link:hover{color:var(--text); background:rgba(31,122,104,0.07);}
+  .side-link.on{color:var(--accent); background:rgba(31,122,104,0.1);}
+  .side-spacer{flex:1;}
+  .main{flex:1; min-width:0; padding:30px 5vw 70px; max-width:980px;}
+  .mobiletop{display:none; align-items:center; justify-content:space-between; padding:14px 5vw; border-bottom:1px solid var(--line); background:var(--bg); position:sticky; top:0; z-index:50;}
+  .mobiletop .brand{font-size:16px; margin:0;}
+  .mobile-nav{display:none;}
+  @media(max-width:820px){
+    .side{display:none;}
+    .mobiletop{display:flex;}
+    .mobile-nav{display:flex; gap:4px; padding:10px 5vw; border-bottom:1px solid var(--line); overflow-x:auto;}
+    .mobile-nav button{white-space:nowrap; padding:8px 12px; background:var(--panel); border:1px solid var(--line); border-radius:2px; font-family:var(--mono); font-size:11.5px; color:var(--muted);}
+    .mobile-nav button.on{color:#fff; background:var(--accent); border-color:var(--accent);}
+    .main{padding:22px 5vw 60px;}
+  }
+
+  .page{display:none;}
+  .page.active{display:block;}
+  .page-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:26px;}
+  .page-head h1{font-family:var(--disp); font-size:22px; font-weight:900;}
+  .month-picker{display:flex; align-items:center; gap:10px;}
+  .month-picker button{width:32px; height:32px; background:var(--panel); border:1px solid var(--line); border-radius:2px; color:var(--accent); font-family:var(--mono); font-size:15px;}
+  .month-picker .mval{font-family:var(--mono); font-weight:600; font-size:15px; min-width:92px; text-align:center;}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:2px; padding:22px; margin-bottom:16px;}
+  .card h2{font-family:var(--disp); font-size:15px; margin-bottom:16px;}
+
+  .entry-form{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;}
+  .entry-form .wide{grid-column:1 / -1;}
+  @media(max-width:700px){ .entry-form{grid-template-columns:1fr 1fr;} }
+
+  .summary-strip{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px;}
+  .sum-card{background:var(--panel); border:1px solid var(--line); border-radius:2px; padding:18px 20px;}
+  .sum-card .lbl{font-family:var(--mono); color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;}
+  .sum-card .val{font-family:var(--hud); font-weight:900; font-size:24px;}
+  .sum-card.total .val{color:var(--accent);}
+  @media(max-width:700px){ .summary-strip{grid-template-columns:1fr;} }
+
+  table.tbl{width:100%; border-collapse:collapse; font-size:13.5px;}
+  table.tbl th{text-align:left; font-family:var(--mono); font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:8px 10px; border-bottom:1px solid var(--line);}
+  table.tbl td{padding:10px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
+  table.tbl tr:last-child td{border-bottom:none;}
+  table.tbl td.num{font-family:var(--mono); text-align:right; white-space:nowrap;}
+  .tbl-wrap{overflow-x:auto;}
+  .row-actions{display:flex; gap:6px; justify-content:flex-end;}
+  .icon-btn{width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--line); border-radius:2px; color:var(--muted);}
+  .icon-btn:hover{color:var(--urgent); border-color:var(--urgent);}
+  .icon-btn svg{width:13px; height:13px;}
+  .confirm-chip{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10.5px; padding:4px 8px; border-radius:2px; text-transform:uppercase; letter-spacing:.04em; border:1px solid var(--line); color:var(--muted); background:transparent;}
+  .confirm-chip.on{color:var(--good); border-color:rgba(29,122,67,0.4); background:rgba(29,122,67,0.08);}
+  .empty-note{color:var(--muted); font-size:13px; text-align:center; padding:26px;}
+
+  /* ---------- INVOICE ---------- */
+  .invoice-actions{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;}
+  .inv-doc{background:var(--panel); border:1px solid var(--line); padding:36px; max-width:720px;}
+  .inv-head{display:flex; justify-content:space-between; border-bottom:2px solid var(--text); padding-bottom:16px; margin-bottom:20px;}
+  .inv-head h2{font-family:var(--disp); font-size:20px;}
+  .inv-head .d{font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:4px; text-align:right;}
+  .inv-parties{display:flex; justify-content:space-between; margin-bottom:22px; font-size:13px;}
+  .inv-parties .to{font-weight:700; font-size:16px;}
+  .inv-parties .from{text-align:right; color:var(--muted); line-height:1.7;}
+  .inv-total-line{display:flex; justify-content:space-between; align-items:baseline; padding:16px 0; border-top:2px solid var(--text); border-bottom:2px solid var(--text); margin:18px 0;}
+  .inv-total-line .l{font-family:var(--hud); font-weight:700; letter-spacing:.04em;}
+  .inv-total-line .v{font-family:var(--mono); font-size:24px; font-weight:700; color:var(--accent);}
+  .inv-bank{font-size:12.5px; color:var(--muted); line-height:1.9; margin-top:18px;}
+  .inv-bank b{color:var(--text);}
+  .line-preview{background:var(--panel); border:1px solid var(--line); border-radius:2px; padding:18px; font-family:var(--mono); font-size:12.5px; white-space:pre-wrap; line-height:1.8; margin-top:14px;}
+
   @media print{
     body *{visibility:hidden;}
-    #reportPrintArea, #reportPrintArea *{visibility:visible;}
-    #reportPrintArea{display:block !important; position:absolute; top:0; left:0; width:100%; color:#111; background:#fff;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{display:block !important; position:absolute; top:0; left:0; width:100%; padding:20px 30px;}
   }
-  .rpt-page{padding:30px 40px; font-family:'Noto Sans JP',sans-serif; color:#111;}
-  .rpt-head{display:flex; justify-content:space-between; border-bottom:3px solid #111; padding-bottom:14px; margin-bottom:20px;}
-  .rpt-head h1{font-size:20px;}
-  .rpt-head .d{font-family:var(--mono); font-size:12px; color:#555; margin-top:4px;}
-  .rpt-table{width:100%; border-collapse:collapse; margin:16px 0; font-size:12.5px;}
-  .rpt-table td, .rpt-table th{border:1px solid #ccc; padding:8px 10px; text-align:left;}
-  .rpt-table th{background:#eee;}
-  .rpt-pairs{display:flex; flex-direction:column; gap:10px; margin:14px 0;}
-  .rpt-pair{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .rpt-pair img, .rpt-empty{width:100%; aspect-ratio:4/3; object-fit:cover; border:1px solid #ccc;}
-  .rpt-empty{display:flex; align-items:center; justify-content:center; color:#888; font-size:11px; border-style:dashed;}
-  .rpt-cap{font-size:10px; color:#555; text-align:center; margin-top:2px;}
-  .rpt-note{border:1px solid #ccc; padding:14px; margin-top:16px; font-size:12.5px; line-height:1.8; background:#fafafa;}
-  .rpt-note b{color:#a8432f;}
+  #printArea{display:none;}
+
+  /* ---------- PROFILE ---------- */
+  .profile-form{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:700px){ .profile-form{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
 
-<!-- ============ TOP / LP ============ -->
-<section class="screen" id="screen-top">
-  <div class="topnav">
-    <div class="brand">FIELD<span>WATCH</span></div>
-    <div class="tag">SOLAR SITE MAINTENANCE MANAGEMENT</div>
-  </div>
-
-  <div class="hero">
-    <div>
-      <div class="hero-eyebrow">太陽光発電所 除草・植生管理 / 現場報告の自動化</div>
-      <h1>すべての現場を、<br><em>地図と写真</em>で管理する。</h1>
-      <p>各発電所の除草履歴・Before/After写真・次回の作業目安を一元管理。元請け企業への報告書PDFもワンクリックで作成できます。</p>
-      <div class="hero-cta">
-        <button class="btn primary" onclick="go('map')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.3"/></svg></span>地図から現場を探す <span class="arrow">→</span></button>
-        <button class="btn" onclick="go('list')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>リストで検索・絞り込み <span class="arrow">→</span></button>
-        <button class="btn" onclick="go('input')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18.5 9.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 15.5V20Z"/><path d="M13 6l3 3"/></svg></span>データを入力する <span class="arrow">→</span></button>
-      </div>
-    </div>
-    <div class="hero-panel hud-corners">
-      <div class="ttl"><span>SITE STATUS</span><span id="topTotalCount"></span></div>
-      <div class="stat-row"><span class="k"><span class="dot urgent"></span>要対応（除草時期超過）</span><span class="v" id="cntUrgent"></span></div>
-      <div class="stat-row"><span class="k"><span class="dot soon"></span>そろそろ確認</span><span class="v" id="cntSoon"></span></div>
-      <div class="stat-row"><span class="k"><span class="dot good"></span>良好</span><span class="v" id="cntGood"></span></div>
-    </div>
-  </div>
-
-  <div class="strip">
-    <div><div class="num" id="stripSites">–</div><div class="lbl">管理現場数</div></div>
-    <div><div class="num">3</div><div class="lbl">対応エリア（東北・関東・北海道）</div></div>
-    <div><div class="num" id="stripUrgent">–</div><div class="lbl">今すぐ営業提案できる現場</div></div>
-    <div><div class="num">PDF</div><div class="lbl">報告書ワンクリック出力</div></div>
-  </div>
-
-  <div class="howto">
-    <h2>使い方</h2>
-    <div class="howto-grid">
-      <div class="howto-card hud-corners"><div class="n">01</div><h3>現場を見つける</h3><p>実地図上のピン、またはリスト検索で対象の発電所を探します。ピンの色で「良好／そろそろ／要対応」がひと目で分かります。</p></div>
-      <div class="howto-card hud-corners"><div class="n">02</div><h3>履歴とBefore/Afterを確認</h3><p>現場ページで作業履歴・写真・次回目安をチェック。元請け担当者への提案トークもここから組み立てられます。</p></div>
-      <div class="howto-card hud-corners"><div class="n">03</div><h3>報告書PDFを作成</h3><p>Before/Afterを並べた作業内容をまとめた報告書PDFをその場で出力。元請けからオーナー様への報告資料にそのまま使えます。</p></div>
-    </div>
-  </div>
-
-  <div class="footer-note">FIELDWATCH ／ 地図データ: © OpenStreetMap contributors, © CARTO ／ 気象データ: Open-Meteo</div>
-</section>
-
-<!-- ============ MAP ============ -->
-<section class="screen active" id="screen-map">
-  <div class="mapshell">
-    <nav class="mapnav">
-      <div class="mapnav-brand">FIELD<span>WATCH</span></div>
-      <button class="mapnav-link" onclick="go('top')">TOP</button>
-      <button class="mapnav-link on" onclick="go('map')">地図</button>
-      <button class="mapnav-link" onclick="go('list')">リスト</button>
-      <button class="mapnav-link" onclick="go('input')">データ入力</button>
-    </nav>
-    <div class="mapcenter">
-      <div class="appbar">
-        <button class="backbtn" onclick="go('top')">← TOP</button>
-        <div class="title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.3"/></svg>現場マップ</div>
-        <div class="spacer"></div>
-        <button class="backbtn" onclick="go('input')">データ入力</button>
-        <div class="viewtoggle">
-          <button class="on" onclick="go('map')">地図</button>
-          <button onclick="go('list')">リスト</button>
-        </div>
-      </div>
-      <div class="mapcanvas">
-        <div id="leafletMap"></div>
-        <div class="mapctl">
-          <button onclick="mapZoom(1)">+</button>
-          <button onclick="mapZoom(-1)">−</button>
-        </div>
-        <div class="legend hud-corners">
-          <div class="legend-ttl">◤ 除草ステータス</div>
-          <div class="row"><span class="dot good"></span>良好（30日未満）</div>
-          <div class="row"><span class="dot soon"></span>そろそろ（30〜55日）</div>
-          <div class="row"><span class="dot urgent"></span>要対応（55日以上）</div>
-        </div>
-      </div>
-    </div>
-    <aside class="mapinspector" id="mapInspector">
-      <div class="inspector-empty">地図上のピンをクリックすると、ここに現場の詳細が表示されます。</div>
-    </aside>
-  </div>
-</section>
-
-<!-- ============ LIST ============ -->
-<section class="screen" id="screen-list">
-  <div class="appbar">
-    <button class="backbtn" onclick="go('top')">← TOP</button>
-    <div class="title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>現場リスト検索</div>
-    <div class="spacer"></div>
-    <button class="backbtn" onclick="go('input')">データ入力</button>
-    <div class="viewtoggle">
-      <button onclick="go('map')">地図</button>
-      <button class="on" onclick="go('list')">リスト</button>
-    </div>
-  </div>
-  <div class="listwrap">
-    <div class="filters">
-      <input type="text" id="searchBox" placeholder="現場名・都道府県で検索…" oninput="renderList()">
-      <select id="statusFilter" onchange="renderList()">
-        <option value="all">すべてのステータス</option>
-        <option value="urgent">要対応のみ</option>
-        <option value="soon">そろそろのみ</option>
-        <option value="good">良好のみ</option>
-      </select>
-      <select id="sortFilter" onchange="renderList()">
-        <option value="urgency">経過日数が長い順</option>
-        <option value="name">現場名順</option>
-      </select>
-    </div>
-    <div class="site-list" id="siteListArea"></div>
-  </div>
-</section>
-
-<!-- ============ DETAIL ============ -->
-<section class="screen" id="screen-detail">
-  <div class="appbar">
-    <button class="backbtn" onclick="go('list')">← リストに戻る</button>
-    <div class="title" id="detailBarTitle">現場詳細</div>
-    <div class="spacer"></div>
-    <button class="backbtn" onclick="go('input')">データ入力</button>
-  </div>
-  <div class="detailwrap" id="detailArea"></div>
-</section>
-
-<!-- ============ DATA INPUT ============ -->
-<section class="screen" id="screen-input">
-  <div class="appbar">
-    <button class="backbtn" onclick="go('top')">← TOP</button>
-    <div class="title">データ入力</div>
-  </div>
-  <div class="inputwrap">
-    <div class="input-tabs">
-      <button class="on" data-tab="history" onclick="switchInputTab('history')">作業履歴を追加</button>
-      <button data-tab="newsite" onclick="switchInputTab('newsite')">新規現場を登録</button>
+<!-- ============ AUTH ============ -->
+<section id="authScreen">
+  <div class="auth-card">
+    <div class="brand">WORK<span>LOG</span></div>
+    <div class="auth-sub">現場日当・経費・請求管理</div>
+    <div class="auth-tabs">
+      <button class="on" data-tab="login" onclick="switchAuthTab('login')">ログイン</button>
+      <button data-tab="register" onclick="switchAuthTab('register')">新規登録</button>
     </div>
 
-    <form id="historyForm" class="input-form" onsubmit="submitHistory(event)">
-      <div class="field-row">
-        <label>対象現場</label>
-        <select id="hfSite" required></select>
-      </div>
-      <div class="field-row two">
-        <div><label>実施日</label><input type="date" id="hfDate" required></div>
-        <div><label>作業内容</label>
-          <select id="hfType">
-            <option>除草作業</option><option>点検</option><option>その他</option>
-          </select>
-        </div>
-      </div>
-      <div class="field-row two">
-        <div>
-          <label>Before写真 枚数</label>
-          <input type="number" id="hfBeforeCount" min="0" max="12" value="0" oninput="renderPhotoSlots('before')">
-        </div>
-        <div>
-          <label>After写真 枚数</label>
-          <input type="number" id="hfAfterCount" min="0" max="12" value="0" oninput="renderPhotoSlots('after')">
-        </div>
-      </div>
-      <div class="photo-slots" id="hfBeforeSlots"></div>
-      <div class="photo-slots" id="hfAfterSlots"></div>
-      <div class="field-row">
-        <label>所見・メモ</label>
-        <textarea id="hfNote" rows="3" placeholder="現地の状況、次回対応の目安など"></textarea>
-      </div>
-      <button type="submit" class="btn primary">この作業履歴を保存</button>
-      <div class="input-msg" id="hfMsg"></div>
+    <form id="loginForm" onsubmit="doLogin(event)">
+      <div class="field-row"><label>メールアドレス</label><input type="email" id="liEmail" required autocomplete="username"></div>
+      <div class="field-row"><label>パスワード</label><input type="password" id="liPassword" required autocomplete="current-password"></div>
+      <button type="submit" class="btn primary">ログイン</button>
+      <div class="auth-msg" id="liMsg"></div>
     </form>
 
-    <form id="siteForm" class="input-form" style="display:none;" onsubmit="submitSite(event)">
-      <div class="field-row two">
-        <div><label>現場名</label><input type="text" id="sfName" required placeholder="例）WEST-L ○○発電所"></div>
-        <div><label>発電容量</label><input type="text" id="sfCapacity" placeholder="例）2.0MW"></div>
-      </div>
-      <div class="field-row">
-        <label>所在地（都道府県・市区町村）</label>
-        <input type="text" id="sfPref" required placeholder="例）千葉県○○市">
-      </div>
-      <div class="field-row two">
-        <div><label>緯度（Latitude）</label><input type="number" id="sfLat" step="0.0001" required placeholder="例）35.6812"></div>
-        <div><label>経度（Longitude）</label><input type="number" id="sfLng" step="0.0001" required placeholder="例）139.7671"></div>
-      </div>
-      <div class="field-hint">緯度・経度は地図アプリの共有機能などで確認できます。</div>
-      <div class="field-row">
-        <label>主な雑草の種類</label><input type="text" id="sfGrassType" placeholder="例）セイタカアワダチソウ">
-      </div>
-      <div class="field-row two">
-        <div><label>基準気温（℃）</label><input type="number" id="sfBaseTemp" value="10"></div>
-        <div><label>目標積算気温（℃・日）</label><input type="number" id="sfTarget" value="300"></div>
-      </div>
-      <div class="field-row">
-        <label>メモ</label><textarea id="sfNote" rows="2"></textarea>
-      </div>
-      <button type="submit" class="btn primary">この現場を登録</button>
-      <div class="input-msg" id="sfMsg"></div>
+    <form id="registerForm" class="hidden" onsubmit="doRegister(event)">
+      <div class="field-row"><label>お名前</label><input type="text" id="reName" required></div>
+      <div class="field-row"><label>メールアドレス</label><input type="email" id="reEmail" required autocomplete="username"></div>
+      <div class="field-row"><label>パスワード（8文字以上）</label><input type="password" id="rePassword" required minlength="8" autocomplete="new-password"></div>
+      <button type="submit" class="btn primary">登録してはじめる</button>
+      <div class="auth-msg" id="reMsg"></div>
     </form>
   </div>
 </section>
 
-<!-- ============ PRINT REPORT AREA ============ -->
-<div id="reportPrintArea"></div>
+<!-- ============ APP ============ -->
+<div id="appShell">
+  <nav class="side">
+    <div class="side-brand">WORK<span>LOG</span></div>
+    <div class="side-who" id="sideWho"></div>
+    <button class="side-link on" data-page="entry" onclick="showPage('entry')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18.5 9.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 15.5V20Z"/><path d="M13 6l3 3"/></svg>
+      記録する
+    </button>
+    <button class="side-link" data-page="list" onclick="showPage('list')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      一覧・集計
+    </button>
+    <button class="side-link" data-page="invoice" onclick="showPage('invoice')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9 12h6M9 15.5h6M9 8.5h2"/></svg>
+      請求書
+    </button>
+    <button class="side-link" data-page="profile" onclick="showPage('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c1.4-4 4.3-6 7.5-6s6.1 2 7.5 6"/></svg>
+      プロフィール
+    </button>
+    <button class="side-link hidden" id="adminNavLink" data-page="admin" onclick="showPage('admin')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/></svg>
+      管理者ビュー
+    </button>
+    <div class="side-spacer"></div>
+    <button class="side-link" onclick="doLogout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 17l5-5-5-5M20 12H9M13 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/></svg>
+      ログアウト
+    </button>
+  </nav>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column;">
+    <div class="mobiletop">
+      <div class="brand">WORK<span>LOG</span></div>
+      <button class="btn small" onclick="doLogout()">ログアウト</button>
+    </div>
+    <div class="mobile-nav">
+      <button class="on" data-page="entry" onclick="showPage('entry')">記録する</button>
+      <button data-page="list" onclick="showPage('list')">一覧・集計</button>
+      <button data-page="invoice" onclick="showPage('invoice')">請求書</button>
+      <button data-page="profile" onclick="showPage('profile')">プロフィール</button>
+      <button class="hidden" id="adminNavLinkMobile" data-page="admin" onclick="showPage('admin')">管理者</button>
+    </div>
+
+    <div class="main">
+      <!-- ---- ENTRY PAGE ---- -->
+      <section class="page active" id="page-entry">
+        <div class="page-head"><h1>記録する</h1></div>
+
+        <div class="card">
+          <h2>日当を記録（収入）</h2>
+          <form class="entry-form" onsubmit="submitEntry(event)">
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">実施日</label><input type="date" id="enDate" required></div>
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">日当（円）</label><input type="number" id="enWage" min="1" required></div>
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">都道府県・現場所在地</label><input type="text" id="enPref" placeholder="例）千葉県佐倉市"></div>
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">現場名</label><input type="text" id="enSite" placeholder="例）〇〇発電所"></div>
+            <div class="wide"><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">作業内容</label><input type="text" id="enWork" placeholder="例）除草作業"></div>
+            <div class="wide"><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">メモ</label><input type="text" id="enNote" placeholder="任意"></div>
+            <div class="wide"><button type="submit" class="btn primary">この日当を保存</button></div>
+            <div class="wide auth-msg" id="enMsg" style="text-align:left;"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>経費を記録（支出）</h2>
+          <form class="entry-form" onsubmit="submitExpense(event)">
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">日付</label><input type="date" id="exDate" required></div>
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">金額（円）</label><input type="number" id="exAmount" min="1" required></div>
+            <div>
+              <label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">区分</label>
+              <select id="exCategory"><option>交通費</option><option>道具代</option><option>その他</option></select>
+            </div>
+            <div class="wide"><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">メモ</label><input type="text" id="exNote" placeholder="任意"></div>
+            <div class="wide"><button type="submit" class="btn">この経費を保存</button></div>
+            <div class="wide auth-msg" id="exMsg" style="text-align:left;"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ---- LIST / SUMMARY PAGE ---- -->
+      <section class="page" id="page-list">
+        <div class="page-head">
+          <h1>一覧・集計</h1>
+          <div class="month-picker">
+            <button onclick="shiftMonth('list',-1)">←</button>
+            <span class="mval" id="listMonthVal"></span>
+            <button onclick="shiftMonth('list',1)">→</button>
+          </div>
+        </div>
+        <div class="summary-strip">
+          <div class="sum-card"><div class="lbl">日当 小計</div><div class="val" id="listWageSum">¥0</div></div>
+          <div class="sum-card"><div class="lbl">経費 小計</div><div class="val" id="listExpSum">¥0</div></div>
+          <div class="sum-card total"><div class="lbl">合計</div><div class="val" id="listTotalSum">¥0</div></div>
+        </div>
+        <div class="card">
+          <h2>日当</h2>
+          <div class="tbl-wrap"><table class="tbl" id="entryTable"></table></div>
+        </div>
+        <div class="card">
+          <h2>経費</h2>
+          <div class="tbl-wrap"><table class="tbl" id="expenseTable"></table></div>
+        </div>
+      </section>
+
+      <!-- ---- INVOICE PAGE ---- -->
+      <section class="page" id="page-invoice">
+        <div class="page-head">
+          <h1>請求書</h1>
+          <div class="month-picker">
+            <button onclick="shiftMonth('invoice',-1)">←</button>
+            <span class="mval" id="invoiceMonthVal"></span>
+            <button onclick="shiftMonth('invoice',1)">→</button>
+          </div>
+        </div>
+        <div class="invoice-actions">
+          <button class="btn primary" onclick="printInvoice()">印刷・PDF保存</button>
+          <button class="btn" onclick="copyLineText()">LINE用テキストをコピー</button>
+        </div>
+        <div class="inv-doc" id="invoiceDoc"></div>
+        <div id="lineTextArea" class="hidden">
+          <h2 style="font-family:var(--disp);font-size:15px;margin:22px 0 4px;">LINE用テキストプレビュー</h2>
+          <div class="line-preview" id="linePreviewBox"></div>
+        </div>
+      </section>
+
+      <!-- ---- PROFILE PAGE ---- -->
+      <section class="page" id="page-profile">
+        <div class="page-head"><h1>プロフィール（振込先・インボイス情報）</h1></div>
+        <div class="card">
+          <form class="profile-form" onsubmit="submitProfile(event)">
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">銀行名</label><input type="text" id="pfBankName"></div>
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">支店名</label><input type="text" id="pfBankBranch"></div>
+            <div>
+              <label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">口座種別</label>
+              <select id="pfAccountType"><option value="普通">普通</option><option value="当座">当座</option></select>
+            </div>
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">口座番号</label><input type="text" id="pfAccountNumber"></div>
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">口座名義（カナ）</label><input type="text" id="pfAccountHolder"></div>
+            <div><label style="display:block;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;">インボイス登録番号（任意）</label><input type="text" id="pfInvoiceReg" placeholder="例）T1234567890123"></div>
+            <div style="grid-column:1/-1;"><button type="submit" class="btn primary" style="width:auto;">保存する</button></div>
+            <div style="grid-column:1/-1;" class="auth-msg" id="pfMsg" style="text-align:left;"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ---- ADMIN PAGE ---- -->
+      <section class="page" id="page-admin">
+        <div class="page-head">
+          <h1>管理者ビュー</h1>
+          <div class="month-picker">
+            <button onclick="shiftMonth('admin',-1)">←</button>
+            <span class="mval" id="adminMonthVal"></span>
+            <button onclick="shiftMonth('admin',1)">→</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>作業者を選択</h2>
+          <select id="adminWorkerSelect" onchange="loadAdminView()" style="width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);padding:11px 12px;border-radius:2px;font-size:14.5px;"></select>
+        </div>
+        <div class="summary-strip">
+          <div class="sum-card"><div class="lbl">日当 小計</div><div class="val" id="adminWageSum">¥0</div></div>
+          <div class="sum-card"><div class="lbl">経費 小計</div><div class="val" id="adminExpSum">¥0</div></div>
+          <div class="sum-card total"><div class="lbl">合計</div><div class="val" id="adminTotalSum">¥0</div></div>
+        </div>
+        <div class="card">
+          <h2>日当（確認フラグの切り替えができます）</h2>
+          <div class="tbl-wrap"><table class="tbl" id="adminEntryTable"></table></div>
+        </div>
+        <div class="card">
+          <h2>経費</h2>
+          <div class="tbl-wrap"><table class="tbl" id="adminExpenseTable"></table></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
 <script>
-/* ---------------- DATA MODEL (Cloudflare D1 + R2 via Pages Functions) ---------------- */
-const TODAY = new Date();
+/* ---------------- STATE ---------------- */
+// TODO: replace with your real company name — it appears as the invoice recipient (「〇〇 御中」).
+const COMPANY_NAME = '（会社名を設定してください）';
+let currentUser = null;
+const months = { list: currentMonthStr(), invoice: currentMonthStr(), admin: currentMonthStr() };
 
-let sites = [];
-let sitesLoadFailed = false;
-let sitesReadyResolve;
-const sitesReadyPromise = new Promise((res)=>{ sitesReadyResolve = res; });
+function currentMonthStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function monthLabel(m){
+  const [y,mo] = m.split('-');
+  return y + '年' + parseInt(mo,10) + '月';
+}
+function yen(n){ return '¥' + Number(n||0).toLocaleString('ja-JP'); }
 
-async function loadSites(){
+/* ---------------- AUTH ---------------- */
+function switchAuthTab(tab){
+  document.querySelectorAll('.auth-tabs button').forEach(b=> b.classList.toggle('on', b.dataset.tab===tab));
+  document.getElementById('loginForm').classList.toggle('hidden', tab!=='login');
+  document.getElementById('registerForm').classList.toggle('hidden', tab!=='register');
+}
+
+async function doLogin(ev){
+  ev.preventDefault();
+  const msg = document.getElementById('liMsg');
+  msg.style.color = 'var(--muted)'; msg.textContent = 'ログインしています…';
   try{
-    const res = await fetch('/api/sites');
-    if(!res.ok) throw new Error('HTTP '+res.status);
+    const res = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email: document.getElementById('liEmail').value, password: document.getElementById('liPassword').value }) });
+    if(!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    data.forEach(s=> s.history.sort((a,b)=> new Date(b.date) - new Date(a.date)) );
-    sites = data;
-    sitesLoadFailed = false;
+    currentUser = data.user;
+    enterApp();
   }catch(e){
-    console.error('Failed to load sites:', e);
-    sites = [];
-    sitesLoadFailed = true;
+    msg.style.color = 'var(--urgent)'; msg.textContent = 'メールアドレスまたはパスワードが違います。';
   }
-  sitesReadyResolve();
 }
 
-/* ---------------- STATUS LOGIC ---------------- */
-function daysSince(dateStr){
-  const d = new Date(dateStr);
-  return Math.round((TODAY - d) / 86400000);
+async function doRegister(ev){
+  ev.preventDefault();
+  const msg = document.getElementById('reMsg');
+  msg.style.color = 'var(--muted)'; msg.textContent = '登録しています…';
+  try{
+    const res = await fetch('/api/auth/register', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name: document.getElementById('reName').value, email: document.getElementById('reEmail').value, password: document.getElementById('rePassword').value }) });
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    currentUser = data.user;
+    enterApp();
+  }catch(e){
+    msg.style.color = 'var(--urgent)'; msg.textContent = e.message || '登録に失敗しました。';
+  }
 }
-function statusOf(site){
-  if(!site.history.length) return {level:'good', label:'良好', days:0};
-  const days = daysSince(site.history[0].date);
-  if(days >= 55) return {level:'urgent', label:'要対応', days};
-  if(days >= 30) return {level:'soon', label:'そろそろ', days};
-  return {level:'good', label:'良好', days};
+
+async function doLogout(){
+  await fetch('/api/auth/logout', { method:'POST' });
+  currentUser = null;
+  document.getElementById('appShell').classList.remove('active');
+  document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('loginForm').reset();
 }
-function nextAdvice(site, st){
-  if(!site.history.length) return '作業履歴がまだ登録されていません。';
-  if(st.level==='urgent') return `除草時期の目安（約55日）を${st.days-55}日超過しています。至急ご確認をおすすめします。`;
-  if(st.level==='soon') return `前回作業から${st.days}日経過。次回除草の目安時期に近づいています。`;
-  return `前回作業から${st.days}日。当面は良好な状態が見込まれます。`;
+
+function enterApp(){
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('appShell').classList.add('active');
+  document.getElementById('sideWho').textContent = currentUser.name + '（' + (currentUser.role==='admin'?'管理者':'作業者') + '）';
+  document.getElementById('adminNavLink').classList.toggle('hidden', currentUser.role!=='admin');
+  document.getElementById('adminNavLinkMobile').classList.toggle('hidden', currentUser.role!=='admin');
+  document.getElementById('enDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('exDate').value = new Date().toISOString().slice(0,10);
+  loadProfileForm();
+  refreshMonthLabels();
+  showPage('entry');
+}
+
+async function checkSession(){
+  try{
+    const res = await fetch('/api/auth/me');
+    const data = await res.json();
+    if(data.user){ currentUser = data.user; enterApp(); }
+  }catch(e){ /* not logged in */ }
 }
 
 /* ---------------- NAV ---------------- */
-async function go(screen, id){
-  await sitesReadyPromise;
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('screen-'+screen).classList.add('active');
-  window.scrollTo(0,0);
-  if(screen==='map') setTimeout(()=>initMap(), 30);
-  if(screen==='list') renderList();
-  if(screen==='detail' && id) renderDetail(id);
-  if(screen==='input'){
-    populateSiteSelect(id);
-    document.getElementById('hfDate').value = new Date().toISOString().slice(0,10);
-    switchInputTab('history');
-  }
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=> p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.side-link, .mobile-nav button').forEach(b=> b.classList.toggle('on', b.dataset.page===page));
+  if(page==='list') loadList();
+  if(page==='invoice') loadInvoice();
+  if(page==='admin') loadAdminUsers();
 }
 
-/* ---------------- TOP STATS ---------------- */
-function renderTopStats(){
-  const counts = {good:0, soon:0, urgent:0};
-  sites.forEach(s=> counts[statusOf(s).level]++ );
-  document.getElementById('cntUrgent').textContent = counts.urgent + ' 現場';
-  document.getElementById('cntSoon').textContent = counts.soon + ' 現場';
-  document.getElementById('cntGood').textContent = counts.good + ' 現場';
-  document.getElementById('topTotalCount').textContent = '全 ' + sites.length + ' 現場';
-  document.getElementById('stripSites').textContent = sites.length;
-  document.getElementById('stripUrgent').textContent = counts.urgent;
+function refreshMonthLabels(){
+  document.getElementById('listMonthVal').textContent = monthLabel(months.list);
+  document.getElementById('invoiceMonthVal').textContent = monthLabel(months.invoice);
+  document.getElementById('adminMonthVal').textContent = monthLabel(months.admin);
+}
+function shiftMonth(which, dir){
+  const [y,m] = months[which].split('-').map(Number);
+  const d = new Date(y, m-1+dir, 1);
+  months[which] = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  refreshMonthLabels();
+  if(which==='list') loadList();
+  if(which==='invoice') loadInvoice();
+  if(which==='admin') loadAdminView();
 }
 
-/* ---------------- MAP (Leaflet, real map data) ---------------- */
-let leafletMap = null;
-let markerLayer = null;
-
-function initMap(){
-  if(!leafletMap){
-    leafletMap = L.map('leafletMap', { zoomControl:false }).setView([37.6, 138.5], 5);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
-      maxZoom: 19
-    }).addTo(leafletMap);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19, opacity: 0.9
-    }).addTo(leafletMap);
-    markerLayer = L.layerGroup().addTo(leafletMap);
-  }
-  markerLayer.clearLayers();
-  const colorMap = {good:'#1d7a43', soon:'#a3690a', urgent:'#c23b30'};
-  const labelMap = {good:'良好', soon:'そろそろ', urgent:'要対応'};
-  sites.forEach(site=>{
-    const st = statusOf(site);
-    const c = colorMap[st.level];
-    const marker = L.circleMarker([site.lat, site.lng], {
-      radius: 8, color:'#ffffff', weight:2, fillColor:c, fillOpacity:0.95,
-      className: st.level==='urgent' ? 'urgent-marker' : ''
-    });
-    marker.bindTooltip(site.name.replace('WEST-L ',''), {permanent:true, direction:'right', offset:[10,0], className:'site-tooltip'});
-    marker.bindPopup(
-      '<div class="popup-name">'+site.name+'</div>'+
-      '<div class="popup-pref">'+site.pref+' ／ '+labelMap[st.level]+'（'+st.days+'日経過）</div>'+
-      '<button class="popup-btn" onclick="go(\'detail\',\''+site.id+'\')">現場ページを見る →</button>'
-    );
-    marker.on('click', ()=> renderInspector(site.id));
-    marker.addTo(markerLayer);
-  });
-  if(selectedMapSiteId && !sites.some(s=>s.id===selectedMapSiteId)) clearInspector();
-  setTimeout(()=>{ if(leafletMap) leafletMap.invalidateSize(); }, 60);
+/* ---------------- ENTRY FORMS ---------------- */
+async function submitEntry(ev){
+  ev.preventDefault();
+  const msg = document.getElementById('enMsg');
+  const wage = parseInt(document.getElementById('enWage').value, 10);
+  msg.style.color = 'var(--muted)'; msg.textContent = '保存しています…';
+  try{
+    const res = await fetch('/api/entries', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      date: document.getElementById('enDate').value, wage,
+      pref: document.getElementById('enPref').value, siteName: document.getElementById('enSite').value,
+      workType: document.getElementById('enWork').value, note: document.getElementById('enNote').value,
+    })});
+    if(!res.ok) throw new Error(await res.text());
+    msg.style.color = 'var(--good)'; msg.textContent = '保存しました。';
+    ['enPref','enSite','enWork','enNote'].forEach(id=> document.getElementById(id).value = '');
+    document.getElementById('enWage').value = '';
+  }catch(e){ msg.style.color = 'var(--urgent)'; msg.textContent = '保存に失敗しました。'; }
 }
-function mapZoom(dir){ if(!leafletMap) return; dir>0 ? leafletMap.zoomIn() : leafletMap.zoomOut(); }
 
-/* ---------------- LIST ---------------- */
-function renderList(){
-  const q = (document.getElementById('searchBox')?.value || '').trim();
-  const statusF = document.getElementById('statusFilter')?.value || 'all';
-  const sortF = document.getElementById('sortFilter')?.value || 'urgency';
+async function submitExpense(ev){
+  ev.preventDefault();
+  const msg = document.getElementById('exMsg');
+  const amount = parseInt(document.getElementById('exAmount').value, 10);
+  msg.style.color = 'var(--muted)'; msg.textContent = '保存しています…';
+  try{
+    const res = await fetch('/api/expenses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      date: document.getElementById('exDate').value, amount,
+      category: document.getElementById('exCategory').value, note: document.getElementById('exNote').value,
+    })});
+    if(!res.ok) throw new Error(await res.text());
+    msg.style.color = 'var(--good)'; msg.textContent = '保存しました。';
+    document.getElementById('exAmount').value = ''; document.getElementById('exNote').value = '';
+  }catch(e){ msg.style.color = 'var(--urgent)'; msg.textContent = '保存に失敗しました。'; }
+}
 
-  let rows = sites.map(s=>({site:s, st:statusOf(s)}));
-  if(q) rows = rows.filter(r => r.site.name.includes(q) || r.site.pref.includes(q));
-  if(statusF!=='all') rows = rows.filter(r => r.st.level===statusF);
-  if(sortF==='urgency') rows.sort((a,b)=> b.st.days - a.st.days);
-  else rows.sort((a,b)=> a.site.name.localeCompare(b.site.name,'ja'));
+/* ---------------- LIST / SUMMARY ---------------- */
+function entryRowsHTML(entries, opts){
+  if(!entries.length) return `<tr><td colspan="${opts.adminMode?7:6}" class="empty-note">この月の記録はまだありません</td></tr>`;
+  return entries.map(e=>`
+    <tr>
+      <td>${e.date}</td>
+      <td>${e.pref||''}</td>
+      <td>${e.site_name||''}</td>
+      <td>${e.work_type||''}</td>
+      <td class="num">${yen(e.wage)}</td>
+      ${opts.adminMode?`<td><button class="confirm-chip ${e.confirmed?'on':''}" onclick="toggleConfirm(${e.id})">${e.confirmed?'確認済み':'未確認'}</button></td>`:''}
+      <td class="row-actions"><button class="icon-btn" onclick="deleteEntry(${e.id})" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M9 6V4h6v2M6 6l1 14h10l1-14"/></svg></button></td>
+    </tr>`).join('');
+}
+function expenseRowsHTML(expenses){
+  if(!expenses.length) return `<tr><td colspan="5" class="empty-note">この月の経費はまだありません</td></tr>`;
+  return expenses.map(x=>`
+    <tr>
+      <td>${x.date}</td>
+      <td>${x.category||''}</td>
+      <td>${x.note||''}</td>
+      <td class="num">${yen(x.amount)}</td>
+      <td class="row-actions"><button class="icon-btn" onclick="deleteExpense(${x.id})" title="削除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M9 6V4h6v2M6 6l1 14h10l1-14"/></svg></button></td>
+    </tr>`).join('');
+}
 
-  const labelMap = {good:'良好', soon:'そろそろ', urgent:'要対応'};
-  const area = document.getElementById('siteListArea');
-  area.innerHTML = rows.map(r=>`
-    <div class="site-row hud-corners ${r.st.level==='urgent'?'warn':''}" onclick="go('detail','${r.site.id}')">
-      <div class="badge ${r.st.level}">${labelMap[r.st.level]}</div>
-      <div><div class="name">${r.site.name}</div><div class="pref">${r.site.pref}</div></div>
-      <div class="field">前回作業日<b>${r.site.history[0]?.date || '未実施'}</b></div>
-      <div class="field">経過日数<b>${r.site.history.length ? r.st.days+' 日' : '—'}</b></div>
-      <div class="chev">詳細 →</div>
+async function loadList(){
+  const [entries, expenses] = await Promise.all([
+    fetch('/api/entries?month='+months.list).then(r=>r.json()),
+    fetch('/api/expenses?month='+months.list).then(r=>r.json()),
+  ]);
+  const wageSum = entries.reduce((s,e)=>s+e.wage,0);
+  const expSum = expenses.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('listWageSum').textContent = yen(wageSum);
+  document.getElementById('listExpSum').textContent = yen(expSum);
+  document.getElementById('listTotalSum').textContent = yen(wageSum+expSum);
+
+  document.getElementById('entryTable').innerHTML = `
+    <tr><th>日付</th><th>都道府県</th><th>現場名</th><th>作業内容</th><th style="text-align:right;">日当</th><th></th></tr>
+    ${entryRowsHTML(entries, {adminMode:false})}`;
+  document.getElementById('expenseTable').innerHTML = `
+    <tr><th>日付</th><th>区分</th><th>メモ</th><th style="text-align:right;">金額</th><th></th></tr>
+    ${expenseRowsHTML(expenses)}`;
+}
+async function deleteEntry(id){
+  if(!confirm('この日当の記録を削除しますか？')) return;
+  await fetch('/api/entries/'+id, { method:'DELETE' });
+  if(document.getElementById('page-list').classList.contains('active')) loadList();
+  if(document.getElementById('page-admin').classList.contains('active')) loadAdminView();
+}
+async function deleteExpense(id){
+  if(!confirm('この経費の記録を削除しますか？')) return;
+  await fetch('/api/expenses/'+id, { method:'DELETE' });
+  if(document.getElementById('page-list').classList.contains('active')) loadList();
+  if(document.getElementById('page-admin').classList.contains('active')) loadAdminView();
+}
+
+/* ---------------- INVOICE ---------------- */
+let lastInvoice = null;
+
+async function loadInvoice(){
+  const res = await fetch('/api/invoice?month='+months.invoice);
+  if(!res.ok){ document.getElementById('invoiceDoc').innerHTML = '<div class="empty-note">請求書データを取得できませんでした。</div>'; return; }
+  const inv = await res.json();
+  lastInvoice = inv;
+  renderInvoiceDoc(inv);
+  document.getElementById('lineTextArea').classList.add('hidden');
+}
+
+function renderInvoiceDoc(inv){
+  const rows = inv.entries.map(e=>`
+    <tr><td>${e.date}</td><td>${e.pref||''} ${e.site_name||''}</td><td>${e.work_type||''}</td><td class="num">${yen(e.wage)}</td></tr>
+  `).join('') || `<tr><td colspan="4" class="empty-note">記録がありません</td></tr>`;
+  const expRows = inv.expenses.map(x=>`
+    <tr><td>${x.date}</td><td>${x.category||''}</td><td>${x.note||''}</td><td class="num">${yen(x.amount)}</td></tr>
+  `).join('');
+
+  document.getElementById('invoiceDoc').innerHTML = `
+    <div class="inv-head">
+      <h2>請求書</h2>
+      <div class="d">対象月：${monthLabel(inv.month)}<br>発行日：${new Date().toISOString().slice(0,10)}</div>
     </div>
-  `).join('') || (sitesLoadFailed
-    ? `<div style="color:var(--urgent);padding:30px;text-align:center;">データの読み込みに失敗しました。通信環境をご確認のうえ、ページを再読み込みしてください。</div>`
-    : `<div style="color:var(--muted);padding:30px;text-align:center;">該当する現場がありません</div>`);
-}
-
-/* ---------------- DETAIL ---------------- */
-function getBeforeAfter(h){
-  const before = (h.beforeImages||[]).map((src,i)=>({src, label:'Before '+(i+1)}));
-  const after = (h.afterImages||[]).map((src,i)=>({src, label:'After '+(i+1)}));
-  return {before, after};
-}
-
-function pairedHTML(before, after, opts){
-  const n = Math.max(before.length, after.length);
-  if(n===0) return `<div style="color:var(--muted);font-size:12px;">写真が登録されていません。</div>`;
-  let html = '';
-  for(let i=0;i<n;i++){
-    const b = before[i], a = after[i];
-    html += `<div class="${opts.pairClass}">
-      <div>${b?`<img class="${opts.imgClass||''}" src="${b.src}">`:`<div class="${opts.emptyClass}">写真なし</div>`}<div class="${opts.capClass}">${b?b.label:'Before '+(i+1)}</div></div>
-      <div>${a?`<img class="${opts.imgClass||''}" src="${a.src}">`:`<div class="${opts.emptyClass}">写真なし</div>`}<div class="${opts.capClass}">${a?a.label:'After '+(i+1)}</div></div>
-    </div>`;
-  }
-  return html;
-}
-
-function buildDetailHTML(site, scope, standalone){
-  const st = statusOf(site);
-  const labelMap = {good:'良好', soon:'そろそろ', urgent:'要対応'};
-
-  const historyHtml = site.history.map(h=>{
-    const {before, after} = getBeforeAfter(h);
-    return `
-    <div class="history-item hud-corners">
-      <div class="history-top">
-        <div><div class="history-date">${h.date}</div><div class="history-type">${h.type}　Before ${before.length}枚 ／ After ${after.length}枚</div></div>
-      </div>
-      ${h.note ? `<div class="history-note">${h.note}</div>` : ''}
-      <div class="ba-pairs">${pairedHTML(before, after, {pairClass:'ba-pair', emptyClass:'ba-empty', capClass:'ba-cap'})}</div>
-    </div>`;
-  }).join('') || `<div style="color:var(--muted);font-size:13px;">まだ作業履歴がありません。「データ入力」から追加できます。</div>`;
-
-  const thirdAction = standalone
-    ? `<button class="btn" onclick="go('map')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.3"/></svg></span>地図に戻る</button>`
-    : `<button class="btn" onclick="clearInspector()">選択を解除</button>`;
-
-  return `
-    ${scope==='inspector' ? `<div class="inspector-close"><button onclick="clearInspector()">✕ 閉じる</button></div>` : ''}
-    <div class="detail-head">
-      <div>
-        <h1>${site.name}</h1>
-        <div class="meta">${site.pref} ／ 発電容量 ${site.capacity} ／ 前回作業日 ${site.history[0]?.date || '未実施'}</div>
-      </div>
-      <div class="gauge-card hud-corners ${st.level==='urgent'?'warn':''}">
-        ${gaugeSVG(st)}
-        <div class="txt">
-          <div class="label">CURRENT STATUS</div>
-          <div class="val" style="color:${({good:'#1d7a43',soon:'#a3690a',urgent:'#c23b30'})[st.level]}">${labelMap[st.level]}（${site.history.length ? st.days+'日経過' : 'データなし'}）</div>
-          <div class="sub">${nextAdvice(site, st)}</div>
-        </div>
-      </div>
+    <div class="inv-parties">
+      <div class="to">${COMPANY_NAME} 御中</div>
+      <div class="from">請求者：${inv.worker.name}<br>${inv.worker.invoiceRegNumber?('登録番号：'+inv.worker.invoiceRegNumber):'（インボイス未登録）'}</div>
     </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <tr><th>日付</th><th>現場</th><th>作業内容</th><th style="text-align:right;">日当</th></tr>
+      ${rows}
+    </table></div>
+    <div style="text-align:right;font-family:var(--mono);font-size:13px;margin-top:8px;color:var(--muted);">日当 小計　${yen(inv.wageSubtotal)}</div>
 
-    <div class="actionbar">
-      <button class="btn primary" onclick="openReport('${site.id}')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9 12h6M9 15.5h6M9 8.5h2"/></svg></span>報告書PDFを作成</button>
-      <button class="btn" onclick="go('input','${site.id}')"><span class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18.5 9.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 15.5V20Z"/><path d="M13 6l3 3"/></svg></span>作業履歴を追加</button>
-      ${thirdAction}
+    ${inv.expenses.length ? `
+    <div class="tbl-wrap" style="margin-top:18px;"><table class="tbl">
+      <tr><th>日付</th><th>区分</th><th>メモ</th><th style="text-align:right;">金額</th></tr>
+      ${expRows}
+    </table></div>
+    <div style="text-align:right;font-family:var(--mono);font-size:13px;margin-top:8px;color:var(--muted);">経費 小計　${yen(inv.expenseSubtotal)}</div>
+    ` : ''}
+
+    <div class="inv-total-line"><div class="l">ご請求金額</div><div class="v">${yen(inv.total)}</div></div>
+
+    <div class="inv-bank">
+      <b>お振込先</b><br>
+      ${inv.worker.bankName||'（未登録）'} ${inv.worker.bankBranch||''}　${inv.worker.bankAccountType||''} ${inv.worker.bankAccountNumber||''}<br>
+      口座名義：${inv.worker.bankAccountHolder||'（未登録）'}
     </div>
-
-    <div class="section-ttl"><span>現在の天気 ／ 生育環境データ</span><span id="${scope}-envUpdated" style="font-family:var(--mono);color:var(--muted);font-weight:400;">取得中…</span></div>
-    <div class="env-grid">
-      <div class="env-card hud-corners">
-        <div class="lbl"><span>TODAY'S WEATHER</span><span>${site.pref}</span></div>
-        <div id="${scope}-wxArea"><div class="wx-loading">気象データを取得しています…</div></div>
-      </div>
-      <div class="env-card hud-corners">
-        <div class="lbl"><span>草の生育推定（積算気温ベース）</span><span></span></div>
-        <div class="grass-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c8 0 13-5 13-13 0-1 0-2-.3-3C9 3.3 5 8 5 16v3Z"/><path d="M5 19c2-4 5-7 9-9"/></svg>${site.grass.type}</div>
-        <div id="${scope}-gddArea"><div class="wx-loading">前回作業日からの気温データを集計中…</div></div>
-      </div>
-    </div>
-
-    <div class="section-ttl"><span>作業履歴 ／ BEFORE・AFTER</span><span>${site.history.length}件</span></div>
-    ${historyHtml}
   `;
 }
 
-function renderDetail(id){
-  const site = sites.find(s=>s.id===id);
-  if(!site){ go('list'); return; }
-  document.getElementById('detailBarTitle').textContent = site.name;
-  document.getElementById('detailArea').innerHTML = buildDetailHTML(site, 'detail', true);
-  loadEnvironmentData(site, 'detail');
-}
-
-let selectedMapSiteId = null;
-function renderInspector(id){
-  const site = sites.find(s=>s.id===id);
-  if(!site) return;
-  selectedMapSiteId = id;
-  document.getElementById('mapInspector').innerHTML = buildDetailHTML(site, 'inspector', false);
-  loadEnvironmentData(site, 'inspector');
-}
-function clearInspector(){
-  selectedMapSiteId = null;
-  document.getElementById('mapInspector').innerHTML = `<div class="inspector-empty">地図上のピンをクリックすると、ここに現場の詳細が表示されます。</div>`;
-}
-
-/* ---------------- WEATHER / GROWTH (Open-Meteo, no API key) ---------------- */
-const WX_ICONS = {
-  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8L6 18M18 6l1.8-1.8"/></svg>',
-  partly: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M8 2.5v1.3M3.5 7H4.8M4.4 3.4l.9.9M11.6 3.4l-.9.9"/><path d="M9 19h9a3.5 3.5 0 0 0 .3-7 4.8 4.8 0 0 0-9-1"/></svg>',
-  cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .3-8 5.5 5.5 0 0 0-10.6 1.6A3.5 3.5 0 0 0 7 18Z"/></svg>',
-  fog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9h16M4 12.5h16M4 16h11"/></svg>',
-  rain: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14h10a4 4 0 0 0 .3-8 5.5 5.5 0 0 0-10.6 1.6A3.5 3.5 0 0 0 6 14Z"/><path d="M8 17.5 7 20M12 17.5l-1 2.5M16 17.5l-1 2.5"/></svg>',
-  snow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13h10a4 4 0 0 0 .3-8 5.5 5.5 0 0 0-10.6 1.6A3.5 3.5 0 0 0 6 13Z"/><path d="M8 17.5v3M6.5 19h3M14 17.5v3M12.5 19h3"/></svg>',
-  thunder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h10a4 4 0 0 0 .3-8 5.5 5.5 0 0 0-10.6 1.6A3.5 3.5 0 0 0 6 12Z"/><path d="M12.5 12 10 17h3l-2 5"/></svg>',
-};
-function weatherIcon(code){
-  if(code===0 || code===1) return WX_ICONS.sun;
-  if(code===2) return WX_ICONS.partly;
-  if(code===3) return WX_ICONS.cloud;
-  if(code===45 || code===48) return WX_ICONS.fog;
-  if([51,53,55,61,63,65,80,81].includes(code)) return WX_ICONS.rain;
-  if([71,73,75].includes(code)) return WX_ICONS.snow;
-  if([82,95,96,99].includes(code)) return WX_ICONS.thunder;
-  return WX_ICONS.cloud;
-}
-const WEATHER_DESC = {0:'快晴',1:'晴れ',2:'晴れ時々曇り',3:'曇り',45:'霧',48:'霧',51:'小雨',53:'雨',55:'強い雨',61:'雨',63:'雨',65:'大雨',71:'雪',73:'雪',75:'大雪',80:'にわか雨',81:'にわか雨',82:'激しいにわか雨',95:'雷雨',96:'雷雨',99:'雷雨'};
-
-const envTokens = {detail:0, inspector:0};
-async function loadEnvironmentData(site, scope){
-  const myToken = ++envTokens[scope];
-  const stale = () => envTokens[scope] !== myToken;
-
-  const wxArea = document.getElementById(`${scope}-wxArea`);
-  const gddArea = document.getElementById(`${scope}-gddArea`);
-  const updatedTag = document.getElementById(`${scope}-envUpdated`);
-  if(!wxArea || !gddArea || !updatedTag) return;
-
-  try{
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${site.lat}&longitude=${site.lng}&current=temperature_2m,weather_code,precipitation&timezone=Asia%2FTokyo`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if(stale()) return;
-    const c = data.current;
-    const desc = WEATHER_DESC[c.weather_code] || '—';
-    wxArea.innerHTML = `
-      <div class="wx-now">
-        <div class="icon">${weatherIcon(c.weather_code)}</div>
-        <div>
-          <div class="temp">${Math.round(c.temperature_2m)}℃</div>
-          <div class="desc">${desc}　降水 ${c.precipitation}mm</div>
-        </div>
-      </div>`;
-  }catch(e){
-    if(!stale()) wxArea.innerHTML = `<div class="wx-loading">天気データを取得できませんでした（通信環境をご確認ください）</div>`;
-  }
-  if(stale()) return;
-
-  if(!site.history.length){
-    gddArea.innerHTML = `<div class="wx-loading">作業履歴がないため積算気温を計算できません。</div>`;
-    updatedTag.textContent = '実データ連携（Open-Meteo）';
-    return;
-  }
-
-  try{
-    const lastDate = site.history[0].date;
-    const end = new Date(); end.setDate(end.getDate()-2); // archive API has ~2日ラグ
-    const endStr = end.toISOString().slice(0,10);
-    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${site.lat}&longitude=${site.lng}&start_date=${lastDate}&end_date=${endStr}&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FTokyo`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if(stale()) return;
-    const tmax = data.daily.temperature_2m_max, tmin = data.daily.temperature_2m_min;
-    let gdd = 0;
-    for(let i=0;i<tmax.length;i++){
-      const mean = (tmax[i]+tmin[i])/2;
-      gdd += Math.max(mean - site.grass.baseTemp, 0);
-    }
-    const pct = Math.min(gdd / site.grass.target * 100, 100);
-    const color = pct>=100 ? '#c23b30' : pct>=65 ? '#a3690a' : '#1d7a43';
-    const verdict = pct>=100 ? '刈り取り目安の積算気温を超過。除草作業を推奨します。'
-                  : pct>=65 ? '目安に近づいています。現地確認をおすすめします。'
-                  : '積算気温はまだ目安に達していません。';
-    gddArea.innerHTML = `
-      <div class="gdd-bar-track"><div class="gdd-bar-fill" style="width:${pct}%; background:${color};"></div></div>
-      <div class="gdd-row"><span>積算気温 ${Math.round(gdd)}℃・日</span><span>目安 ${site.grass.target}℃・日</span></div>
-      <div class="env-note">${verdict}<br>${site.grass.note}</div>
-    `;
-  }catch(e){
-    if(!stale()) gddArea.innerHTML = `<div class="wx-loading">気温データを取得できませんでした</div>`;
-  }
-
-  if(!stale()) updatedTag.textContent = '実データ連携（Open-Meteo）';
-}
-
-function gaugeSVG(st){
-  const pct = Math.min(st.days/70, 1);
-  const color = ({good:'#1d7a43',soon:'#a3690a',urgent:'#c23b30'})[st.level];
-  const r=26, c=2*Math.PI*r, off = c*(1-pct);
-  return `<svg width="64" height="64" viewBox="0 0 64 64">
-    <circle cx="32" cy="32" r="${r}" stroke="#e6eae6" stroke-width="6" fill="none"/>
-    <circle cx="32" cy="32" r="${r}" stroke="${color}" stroke-width="6" fill="none"
-      stroke-dasharray="${c}" stroke-dashoffset="${off}" stroke-linecap="round" transform="rotate(-90 32 32)"/>
-    <text x="32" y="37" text-anchor="middle" font-family="IBM Plex Mono" font-size="13" fill="${color}" font-weight="600">${st.days}</text>
-  </svg>`;
-}
-
-/* ---------------- PDF REPORT (print-based, Before/After paired) ---------------- */
-function openReport(id){
-  const site = sites.find(s=>s.id===id);
-  const st = statusOf(site);
-  const labelMap = {good:'良好', soon:'そろそろ確認', urgent:'要対応'};
-  const latest = site.history[0];
-  if(!latest){ alert('この現場にはまだ作業履歴がありません。'); return; }
-
-  const rows = site.history.map(h=>{
-    const {before, after} = getBeforeAfter(h);
-    return `<tr><td>${h.date}</td><td>${h.type}</td><td>Before ${before.length}枚 / After ${after.length}枚</td><td>${h.note||'―'}</td></tr>`;
-  }).join('');
-
-  const {before, after} = getBeforeAfter(latest);
-  const pairs = pairedHTML(before, after, {pairClass:'rpt-pair', emptyClass:'rpt-empty', capClass:'rpt-cap'});
-
-  document.getElementById('reportPrintArea').innerHTML = `
-    <div class="rpt-page">
-      <div class="rpt-head">
-        <div>
-          <h1>除草作業 現場報告書</h1>
-          <div class="d">発電所：${site.name}（${site.pref}／${site.capacity}）</div>
-        </div>
-        <div class="d">発行日：${new Date().toISOString().slice(0,10)}<br>作成：FIELDWATCH 現場管理システム</div>
-      </div>
-
-      <table class="rpt-table">
-        <tr><th style="width:120px;">実施日</th><th style="width:110px;">作業内容</th><th style="width:150px;">写真枚数</th><th>所見</th></tr>
-        ${rows}
-      </table>
-
-      <div style="font-size:12.5px;font-weight:700;margin-top:18px;">直近作業（${latest.date}）Before / After</div>
-      <div class="rpt-pairs">${pairs}</div>
-
-      <div class="rpt-note">
-        <b>現在のステータス：${labelMap[st.level]}（前回作業から${st.days}日経過）</b><br>
-        ${nextAdvice(site, st)}
-      </div>
-    </div>
-  `;
+function printInvoice(){
+  if(!lastInvoice) return;
+  document.getElementById('printArea').innerHTML = document.getElementById('invoiceDoc').outerHTML;
   window.print();
 }
 
-/* ---------------- DATA INPUT SCREEN ---------------- */
-function switchInputTab(tab){
-  document.querySelectorAll('.input-tabs button').forEach(b=> b.classList.toggle('on', b.dataset.tab===tab));
-  document.getElementById('historyForm').style.display = tab==='history' ? 'flex' : 'none';
-  document.getElementById('siteForm').style.display = tab==='newsite' ? 'flex' : 'none';
-}
-
-function populateSiteSelect(preselectId){
-  const sel = document.getElementById('hfSite');
-  if(!sel) return;
-  sel.innerHTML = sites.map(s=>`<option value="${s.id}">${s.name}（${s.pref}）</option>`).join('');
-  if(preselectId) sel.value = preselectId;
-}
-
-function renderPhotoSlots(kind){
-  const countInput = document.getElementById(kind==='before'?'hfBeforeCount':'hfAfterCount');
-  const count = Math.max(0, Math.min(12, parseInt(countInput.value) || 0));
-  const area = document.getElementById(kind==='before'?'hfBeforeSlots':'hfAfterSlots');
-  area.innerHTML = Array.from({length:count}, (_,i)=>`
-    <div class="photo-slot">
-      <div class="slot-lbl">${kind==='before'?'Before':'After'} ${i+1}</div>
-      <input type="file" accept="image/*" onchange="previewSlot(this)">
-      <img class="prev">
-    </div>
-  `).join('');
-}
-function previewSlot(input){
-  const img = input.nextElementSibling;
-  const file = input.files[0];
-  if(!file){ img.style.display='none'; img.src=''; return; }
-  const reader = new FileReader();
-  reader.onload = e => { img.src = e.target.result; img.style.display='block'; };
-  reader.readAsDataURL(file);
-}
-async function submitHistory(ev){
-  ev.preventDefault();
-  const siteId = document.getElementById('hfSite').value;
-  const date = document.getElementById('hfDate').value;
-  const type = document.getElementById('hfType').value;
-  const note = document.getElementById('hfNote').value.trim();
-  const msg = document.getElementById('hfMsg');
-  if(!siteId || !date){ msg.style.color = 'var(--urgent)'; msg.textContent = '対象現場と実施日を入力してください。'; return; }
-
-  msg.style.color = 'var(--muted)';
-  msg.textContent = '保存しています…';
-
-  const fd = new FormData();
-  fd.append('date', date);
-  fd.append('type', type);
-  fd.append('note', note);
-  document.querySelectorAll('#hfBeforeSlots input[type=file]').forEach(inp=>{
-    if(inp.files[0]) fd.append('before', inp.files[0]);
+function buildLineText(inv){
+  const lines = [];
+  lines.push(`【請求内容のご連絡】${monthLabel(inv.month)}`);
+  lines.push(`${inv.worker.name}`);
+  lines.push('');
+  inv.entries.forEach(e=>{
+    lines.push(`${e.date}　${(e.pref||'')}${e.site_name?(' '+e.site_name):''}　${yen(e.wage)}`);
   });
-  document.querySelectorAll('#hfAfterSlots input[type=file]').forEach(inp=>{
-    if(inp.files[0]) fd.append('after', inp.files[0]);
-  });
-
-  try{
-    const res = await fetch(`/api/sites/${encodeURIComponent(siteId)}/history`, { method:'POST', body: fd });
-    if(!res.ok) throw new Error(await res.text());
-    await loadSites();
-    renderTopStats();
-
-    msg.style.color = 'var(--good)';
-    msg.textContent = '保存しました。地図・リスト・現場ページに反映されています。';
-    ev.target.reset();
-    document.getElementById('hfBeforeSlots').innerHTML='';
-    document.getElementById('hfAfterSlots').innerHTML='';
-    document.getElementById('hfDate').value = new Date().toISOString().slice(0,10);
-    populateSiteSelect(siteId);
-  }catch(e){
-    console.error(e);
-    msg.style.color = 'var(--urgent)';
-    msg.textContent = '保存に失敗しました。通信環境をご確認のうえ、もう一度お試しください。';
-  }
-}
-
-async function submitSite(ev){
-  ev.preventDefault();
-  const msg = document.getElementById('sfMsg');
-  const name = document.getElementById('sfName').value.trim();
-  const pref = document.getElementById('sfPref').value.trim();
-  const capacity = document.getElementById('sfCapacity').value.trim() || '—';
-  const lat = parseFloat(document.getElementById('sfLat').value);
-  const lng = parseFloat(document.getElementById('sfLng').value);
-  const grassType = document.getElementById('sfGrassType').value.trim() || '未設定';
-  const baseTemp = parseFloat(document.getElementById('sfBaseTemp').value) || 10;
-  const target = parseFloat(document.getElementById('sfTarget').value) || 300;
-  const note = document.getElementById('sfNote').value.trim();
-
-  if(!name || !pref || isNaN(lat) || isNaN(lng)){
-    msg.style.color = 'var(--urgent)';
-    msg.textContent = '現場名・所在地・緯度・経度は必須です。';
-    return;
-  }
-
-  msg.style.color = 'var(--muted)';
-  msg.textContent = '登録しています…';
-
-  try{
-    const res = await fetch('/api/sites', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ name, pref, capacity, lat, lng, grass:{type:grassType, baseTemp, target, note} })
+  lines.push(`日当 小計：${yen(inv.wageSubtotal)}`);
+  if(inv.expenses.length){
+    lines.push('');
+    inv.expenses.forEach(x=>{
+      lines.push(`${x.date}　${x.category||''}　${yen(x.amount)}`);
     });
-    if(!res.ok) throw new Error(await res.text());
-    const { id } = await res.json();
-    await loadSites();
-    renderTopStats();
-
-    msg.style.color = 'var(--good)';
-    msg.textContent = '現場を登録しました。「作業履歴を追加」タブから記録を追加できます。';
-    ev.target.reset();
-    document.getElementById('sfBaseTemp').value = 10;
-    document.getElementById('sfTarget').value = 300;
-    populateSiteSelect(id);
-    switchInputTab('history');
-  }catch(e){
-    console.error(e);
-    msg.style.color = 'var(--urgent)';
-    msg.textContent = '登録に失敗しました。通信環境をご確認のうえ、もう一度お試しください。';
+    lines.push(`経費 小計：${yen(inv.expenseSubtotal)}`);
   }
+  lines.push('');
+  lines.push(`合計：${yen(inv.total)}`);
+  return lines.join('\n');
 }
 
-/* ---------------- INITIAL LOAD ---------------- */
-(async function boot(){
-  await loadSites();
-  renderTopStats();
-  initMap();
-})();
+async function copyLineText(){
+  if(!lastInvoice) return;
+  const text = buildLineText(lastInvoice);
+  const box = document.getElementById('linePreviewBox');
+  box.textContent = text;
+  document.getElementById('lineTextArea').classList.remove('hidden');
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){ /* clipboard may be unavailable; the text is still shown for manual copy */ }
+}
+
+/* ---------------- PROFILE ---------------- */
+function loadProfileForm(){
+  document.getElementById('pfBankName').value = currentUser.bankName || '';
+  document.getElementById('pfBankBranch').value = currentUser.bankBranch || '';
+  document.getElementById('pfAccountType').value = currentUser.bankAccountType || '普通';
+  document.getElementById('pfAccountNumber').value = currentUser.bankAccountNumber || '';
+  document.getElementById('pfAccountHolder').value = currentUser.bankAccountHolder || '';
+  document.getElementById('pfInvoiceReg').value = currentUser.invoiceRegNumber || '';
+}
+async function submitProfile(ev){
+  ev.preventDefault();
+  const msg = document.getElementById('pfMsg');
+  msg.style.color = 'var(--muted)'; msg.textContent = '保存しています…';
+  try{
+    const res = await fetch('/api/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      bankName: document.getElementById('pfBankName').value,
+      bankBranch: document.getElementById('pfBankBranch').value,
+      bankAccountType: document.getElementById('pfAccountType').value,
+      bankAccountNumber: document.getElementById('pfAccountNumber').value,
+      bankAccountHolder: document.getElementById('pfAccountHolder').value,
+      invoiceRegNumber: document.getElementById('pfInvoiceReg').value,
+    })});
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    currentUser = data.user;
+    msg.style.color = 'var(--good)'; msg.textContent = '保存しました。';
+  }catch(e){ msg.style.color = 'var(--urgent)'; msg.textContent = '保存に失敗しました。'; }
+}
+
+/* ---------------- ADMIN ---------------- */
+async function loadAdminUsers(){
+  const sel = document.getElementById('adminWorkerSelect');
+  if(sel.options.length===0){
+    const res = await fetch('/api/users');
+    const list = await res.json();
+    sel.innerHTML = list.map(u=>`<option value="${u.id}">${u.name}（${u.email}）${u.role==='admin'?' ・管理者':''}</option>`).join('');
+  }
+  loadAdminView();
+}
+async function loadAdminView(){
+  const sel = document.getElementById('adminWorkerSelect');
+  const uid = sel.value;
+  if(!uid) return;
+  const [entries, expenses] = await Promise.all([
+    fetch(`/api/entries?month=${months.admin}&user_id=${uid}`).then(r=>r.json()),
+    fetch(`/api/expenses?month=${months.admin}&user_id=${uid}`).then(r=>r.json()),
+  ]);
+  const wageSum = entries.reduce((s,e)=>s+e.wage,0);
+  const expSum = expenses.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('adminWageSum').textContent = yen(wageSum);
+  document.getElementById('adminExpSum').textContent = yen(expSum);
+  document.getElementById('adminTotalSum').textContent = yen(wageSum+expSum);
+
+  document.getElementById('adminEntryTable').innerHTML = `
+    <tr><th>日付</th><th>都道府県</th><th>現場名</th><th>作業内容</th><th style="text-align:right;">日当</th><th>確認</th><th></th></tr>
+    ${entryRowsHTML(entries, {adminMode:true})}`;
+  document.getElementById('adminExpenseTable').innerHTML = `
+    <tr><th>日付</th><th>区分</th><th>メモ</th><th style="text-align:right;">金額</th><th></th></tr>
+    ${expenseRowsHTML(expenses)}`;
+}
+async function toggleConfirm(id){
+  await fetch('/api/entries/'+id+'/confirm', { method:'POST' });
+  loadAdminView();
+}
+
+/* ---------------- BOOT ---------------- */
+checkSession();
 </script>
 </body>
 </html>
