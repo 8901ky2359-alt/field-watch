@@ -3,7 +3,7 @@
 // available natively in the Cloudflare Workers runtime — no extra dependency.
 
 const ITERATIONS = 100000;
-const SESSION_DAYS = 30;
+const SESSION_DAYS = 365;
 const COOKIE_NAME = 'wl_session';
 
 function toHex(bufferLike) {
@@ -83,7 +83,14 @@ export async function getCurrentUser(request, env) {
   )
     .bind(token)
     .first();
-  return row || null;
+  if (!row) return null;
+
+  // Sliding expiration: as long as this session is used at least once within
+  // SESSION_DAYS, it keeps extending and never actually lapses in practice.
+  const newExpiresAt = new Date(Date.now() + SESSION_DAYS * 86400000).toISOString();
+  await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').bind(newExpiresAt, token).run();
+
+  return row;
 }
 
 export function publicUser(u) {
