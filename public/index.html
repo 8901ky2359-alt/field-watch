@@ -167,7 +167,7 @@ main{max-width:720px;margin:0 auto;padding:16px;}
 .info-grid dd{color:var(--ink);}
 .notes-box{background:var(--panel);border:2px solid var(--ink);padding:12px;white-space:pre-wrap;font-size:14px;margin:10px 0 16px;}
 
-/* ---- bottom nav ---- */
+/* ---- bottom nav (mobile) ---- */
 .bottom-nav{
   position:fixed;left:0;right:0;bottom:0;z-index:50;
   display:flex;background:#fff;border-top:3px solid var(--ink);
@@ -190,13 +190,57 @@ main{max-width:720px;margin:0 auto;padding:16px;}
 .toast.show{display:block;}
 .toast.err{background:var(--red-dark);}
 
-@media(min-width:720px){
-  .bottom-nav{left:50%;transform:translateX(-50%);}
+/* ---- desktop 3-pane layout (menu / map / detail) ---- */
+.desktop-sidebar,.desktop-map-pane{display:none;}
+#desktopMap{width:100%;height:100%;}
+
+@media(min-width:960px){
+  html,body{height:100%;overflow:hidden;}
+  body{
+    display:grid;
+    grid-template-columns:240px 1fr 460px;
+    padding-bottom:0;
+  }
+  .bottom-nav{display:none;}
+  .toast{bottom:24px;}
+
+  .desktop-sidebar{
+    display:flex;flex-direction:column;
+    grid-column:1;height:100%;overflow-y:auto;
+    background:var(--ink);color:#fff;border-right:3px solid var(--green);
+  }
+  .desktop-sidebar .ds-brand{padding:16px;border-bottom:1px solid #333;}
+  .desktop-sidebar .ds-brand b{display:block;font-size:17px;font-weight:800;}
+  .desktop-sidebar .ds-brand small{display:block;font-size:11px;color:#b7e2c6;margin-top:2px;letter-spacing:.05em;}
+  .ds-link{
+    display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid #2a2a2a;
+    color:#e6e7e6;font-size:15px;font-weight:700;padding:14px 16px;cursor:pointer;
+  }
+  .ds-link.active{background:var(--green);color:#fff;}
+  .ds-stats{padding:16px;border-top:1px solid #333;margin-top:auto;}
+  .ds-stats .ds-stat{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#cfd2cf;padding:4px 0;}
+  .ds-stats .ds-stat b{color:#fff;}
+
+  .desktop-map-pane{display:block;grid-column:2;height:100%;border-right:3px solid var(--ink);}
+
+  .mobile-shell{grid-column:3;height:100%;display:flex;flex-direction:column;overflow:hidden;}
+  #screens{flex:1;overflow-y:auto;}
+  main{max-width:none;margin:0;}
 }
 </style>
 </head>
 <body>
 
+<aside class="desktop-sidebar">
+  <div class="ds-brand"><b>FieldWatch</b><small>施工記録管理</small></div>
+  <button class="ds-link" data-action="nav" data-target="home">ホーム</button>
+  <button class="ds-link" data-action="nav" data-target="record">記録する</button>
+  <button class="ds-link" data-action="nav" data-target="list">一覧</button>
+  <div class="ds-stats" id="desktopStats"></div>
+</aside>
+<div class="desktop-map-pane"><div id="desktopMap"></div></div>
+
+<div class="mobile-shell">
 <header class="topbar">
   <div class="brand">FieldWatch<small>施工記録管理</small></div>
   <span id="viewModeFlag" class="view-mode-flag" style="display:none;">閲覧モード</span>
@@ -323,6 +367,7 @@ main{max-width:720px;margin:0 auto;padding:16px;}
   </section>
 
 </main>
+</div>
 
 <nav class="bottom-nav">
   <button class="nav-item" data-action="nav" data-target="home" id="nav-home">
@@ -352,7 +397,9 @@ var state = {
   listMode: 'list',
   listFilter: 'all',
   map: null,
-  mapMarkers: []
+  mapMarkers: [],
+  desktopMap: null,
+  desktopMapMarkers: []
 };
 
 // ---------------- API ----------------
@@ -372,12 +419,23 @@ function apiDelete(url){
 }
 
 function loadSites(force){
-  if(state.sitesLoaded && !force) return Promise.resolve(state.sites);
+  if(state.sitesLoaded && !force){
+    safeRenderDesktopPanes();
+    return Promise.resolve(state.sites);
+  }
   return apiGet('/api/sites').then(function(d){
     state.sites = d.sites;
     state.sitesLoaded = true;
+    safeRenderDesktopPanes();
     return state.sites;
   });
+}
+function safeRenderDesktopPanes(){
+  // Desktop sidebar/map are a progressive-enhancement layer; a failure here
+  // (e.g. the map tile CDN being unreachable) must never break the primary
+  // mobile screen flow that called loadSites().
+  try { renderDesktopMap(); } catch(e){ /* ignore */ }
+  try { renderDesktopStats(); } catch(e){ /* ignore */ }
 }
 
 // ---------------- helpers ----------------
@@ -422,11 +480,13 @@ function navigate(path){ location.hash = path; }
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(function(el){ el.classList.remove('active'); });
   document.getElementById('screen-' + name).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(function(el){ el.classList.remove('active'); });
-  var navEl = document.getElementById('nav-' + name);
-  if(navEl) navEl.classList.add('active');
+  document.querySelectorAll('[data-action="nav"]').forEach(function(el){
+    el.classList.toggle('active', el.dataset.target === name);
+  });
   document.getElementById('viewModeFlag').style.display = 'none';
   window.scrollTo(0,0);
+  var screensEl = document.getElementById('screens');
+  if(screensEl) screensEl.scrollTo(0,0);
 }
 
 function route(){
@@ -566,6 +626,61 @@ function renderMap(){
   else { state.map.fitBounds(bounds, { padding: [30,30] }); }
 }
 
+// ---------------- DESKTOP SIDEBAR / MAP PANE ----------------
+function renderDesktopStats(){
+  var el = document.getElementById('desktopStats');
+  if(!el) return;
+  var sites = state.sites;
+  var inProgress = sites.filter(function(s){ return s.status==='in_progress'; }).length;
+  var completed = sites.filter(function(s){ return s.status==='completed'; }).length;
+  el.innerHTML =
+    '<div class="ds-stat"><span>登録現場数</span><b>'+sites.length+'</b></div>' +
+    '<div class="ds-stat"><span>施工中</span><b>'+inProgress+'</b></div>' +
+    '<div class="ds-stat"><span>施工完了</span><b>'+completed+'</b></div>';
+}
+function renderDesktopMap(){
+  var el = document.getElementById('desktopMap');
+  if(!el || typeof L === 'undefined') return;
+  if(!state.desktopMap){
+    state.desktopMap = L.map(el).setView([35.68, 138.5], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(state.desktopMap);
+  } else {
+    state.desktopMap.invalidateSize();
+  }
+  state.desktopMapMarkers.forEach(function(m){ state.desktopMap.removeLayer(m); });
+  state.desktopMapMarkers = [];
+
+  var sites = state.sites.filter(function(s){ return typeof s.lat==='number' && typeof s.lng==='number'; });
+  if(!sites.length) return;
+
+  var bounds = [];
+  sites.forEach(function(s){
+    var color = s.status==='completed' ? '#0d6b34' : '#c62828';
+    var icon = L.divIcon({
+      className: '',
+      html: '<div style="width:20px;height:20px;background:'+color+';border:2px solid #111;"></div>',
+      iconSize: [20,20],
+      iconAnchor: [10,10]
+    });
+    var marker = L.marker([s.lat, s.lng], { icon: icon }).addTo(state.desktopMap);
+    marker.bindPopup(
+      '<div class="map-popup">' +
+        '<span class="status-badge '+s.status+'">'+statusLabel(s.status)+'</span>' +
+        '<div class="mp-title">'+esc(s.name)+'</div>' +
+        '<div class="mp-addr">'+esc(s.address||'')+'</div>' +
+        '<button class="btn btn-primary btn-sm" data-action="goto-detail" data-id="'+s.id+'">現場ページを見る</button>' +
+      '</div>'
+    );
+    state.desktopMapMarkers.push(marker);
+    bounds.push([s.lat, s.lng]);
+  });
+  if(bounds.length===1){ state.desktopMap.setView(bounds[0], 14); }
+  else { state.desktopMap.fitBounds(bounds, { padding: [30,30] }); }
+}
+
 // ---------------- RECORD ----------------
 function blankForm(){
   return {
@@ -577,6 +692,7 @@ function blankForm(){
   };
 }
 function initRecordScreen(id){
+  loadSites();
   document.getElementById('saveMsg').textContent = '';
   document.getElementById('mapResolveStatus').innerHTML = '';
   if(!id){
@@ -758,6 +874,7 @@ function saveSiteForm(){
 
 // ---------------- DETAIL ----------------
 function initDetailScreen(id, viewMode){
+  loadSites();
   document.getElementById('viewModeFlag').style.display = viewMode ? 'inline-block' : 'none';
   document.getElementById('detailContent').innerHTML = '';
   apiGet('/api/sites/'+id).then(function(d){
@@ -909,6 +1026,11 @@ document.addEventListener('click', function(e){
 document.getElementById('siteForm').addEventListener('submit', function(e){
   e.preventDefault();
   saveSiteForm();
+});
+
+window.addEventListener('resize', function(){
+  if(state.desktopMap) state.desktopMap.invalidateSize();
+  if(state.map) state.map.invalidateSize();
 });
 
 // ---------------- boot ----------------
