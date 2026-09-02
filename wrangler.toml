@@ -1,0 +1,20 @@
+name = "field-watch"
+main = "worker/index.js"
+compatibility_date = "2024-09-23"
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+
+# D1 database — replace database_id with the ID shown on your D1
+# database's detail page in the Cloudflare dashboard.
+[[d1_databases]]
+binding = "DB"
+database_name = "fieldwatch-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# R2 bucket for before/after photos — create a bucket (any name) and
+# put that name here.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "fieldwatch-photos"
