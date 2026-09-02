@@ -140,11 +140,12 @@ main{max-width:720px;margin:0 auto;padding:16px;}
 .slot-img-wrap{position:relative;aspect-ratio:1/1;background:#eee;overflow:hidden;}
 .slot-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
 .slot-empty{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:#ececec;color:#8a8a8a;font-size:12px;font-weight:700;text-align:center;padding:8px;}
-.slot-actions{display:flex;border-top:2px solid var(--ink);}
-.slot-actions label,.slot-actions .del{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:800;border-right:1px solid var(--ink);cursor:pointer;background:#fff;color:var(--ink);}
-.slot-actions label:last-child,.slot-actions .del:last-child{border-right:none;}
-.slot-actions input[type=file]{display:none;}
-.slot-actions .del{background:#fff;color:var(--red-dark);}
+.slot-actions{display:flex;flex-direction:column;}
+.slot-actions-row{display:flex;border-top:2px solid var(--ink);}
+.slot-actions-row label,.slot-actions-row .del{flex:1;text-align:center;padding:9px 4px;font-size:12px;font-weight:800;border-right:1px solid var(--ink);cursor:pointer;background:#fff;color:var(--ink);}
+.slot-actions-row label:last-child,.slot-actions-row .del:last-child{border-right:none;}
+.slot-actions-row input[type=file]{display:none;}
+.slot-actions-row .del{background:#fff;color:var(--red-dark);}
 
 .save-bar{background:var(--bg);padding:12px 0 4px;margin-top:8px;}
 .savebar-msg{font-size:13px;font-weight:700;text-align:center;margin-top:8px;min-height:18px;}
@@ -794,24 +795,22 @@ function buildEmptyPairs(count){
 function photoSlotHtml(siteId, pairIndex, side, photo){
   var label = side==='before' ? 'Before' : 'After';
   var inputId = 'file-'+siteId+'-'+pairIndex+'-'+side;
-  if(photo){
-    return '' +
-      '<div class="photo-slot">' +
-        '<div class="slot-label '+side+'">'+label+'</div>' +
-        '<div class="slot-img-wrap"><img src="'+imgUrl(photo.objectKey)+'" alt=""></div>' +
-        '<div class="slot-actions">' +
-          '<label for="'+inputId+'-retake">撮り直す<input type="file" accept="image/*" capture="environment" id="'+inputId+'-retake" onchange="fwHandlePhotoFile(this,\''+siteId+'\','+pairIndex+',\''+side+'\')"></label>' +
-          '<span class="del" data-action="delete-photo" data-pair="'+pairIndex+'" data-side="'+side+'">削除</span>' +
-        '</div>' +
-      '</div>';
-  }
+  var previewHtml = photo
+    ? '<div class="slot-img-wrap"><img src="'+imgUrl(photo.objectKey)+'" alt=""></div>'
+    : '<div class="slot-empty">未撮影</div>';
+  var deleteRow = photo
+    ? '<div class="slot-actions-row"><span class="del" data-action="delete-photo" data-pair="'+pairIndex+'" data-side="'+side+'">削除</span></div>'
+    : '';
   return '' +
     '<div class="photo-slot">' +
       '<div class="slot-label '+side+'">'+label+'</div>' +
-      '<div class="slot-empty">未撮影</div>' +
+      previewHtml +
       '<div class="slot-actions">' +
-        '<label for="'+inputId+'-cam">カメラ<input type="file" accept="image/*" capture="environment" id="'+inputId+'-cam" onchange="fwHandlePhotoFile(this,\''+siteId+'\','+pairIndex+',\''+side+'\')"></label>' +
-        '<label for="'+inputId+'-lib">選択<input type="file" accept="image/*" id="'+inputId+'-lib" onchange="fwHandlePhotoFile(this,\''+siteId+'\','+pairIndex+',\''+side+'\')"></label>' +
+        '<div class="slot-actions-row">' +
+          '<label for="'+inputId+'-cam">撮影<input type="file" accept="image/*" capture="environment" id="'+inputId+'-cam" onchange="fwHandlePhotoFile(this,\''+siteId+'\','+pairIndex+',\''+side+'\')"></label>' +
+          '<label for="'+inputId+'-lib">アップ<input type="file" accept="image/*" id="'+inputId+'-lib" onchange="fwHandlePhotoFile(this,\''+siteId+'\','+pairIndex+',\''+side+'\')"></label>' +
+        '</div>' +
+        deleteRow +
       '</div>' +
     '</div>';
 }
