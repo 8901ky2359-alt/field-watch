@@ -49,3 +49,20 @@ export async function onRequestPatch(context) {
   const site = await loadSiteWithPhotos(env.DB, params.id);
   return jsonResponse({ site });
 }
+
+export async function onRequestDelete(context) {
+  const { env, params } = context;
+
+  const existing = await env.DB.prepare('SELECT id FROM sites WHERE id = ?').bind(params.id).first();
+  if (!existing) return jsonResponse({ error: 'not found' }, { status: 404 });
+
+  const { results } = await env.DB.prepare('SELECT object_key FROM photos WHERE site_id = ?').bind(params.id).all();
+  for (const row of results || []) {
+    await env.PHOTOS.delete(row.object_key);
+  }
+
+  await env.DB.prepare('DELETE FROM photos WHERE site_id = ?').bind(params.id).run();
+  await env.DB.prepare('DELETE FROM sites WHERE id = ?').bind(params.id).run();
+
+  return jsonResponse({ ok: true });
+}

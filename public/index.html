@@ -911,6 +911,9 @@ function renderDetail(s, viewMode){
     '</div>' +
     '<div class="btn-row" style="margin-bottom:14px;">' +
       '<button class="btn btn-outline btn-sm" data-action="goto-detail" data-id="'+s.id+'" data-view="1">閲覧モードで表示（取引先向け）</button>' +
+    '</div>' +
+    '<div class="btn-row" style="margin-bottom:14px;">' +
+      '<button class="btn btn-danger btn-sm" data-action="delete-site" data-id="'+s.id+'" data-name="'+esc(s.name)+'">この現場の記録を削除する</button>' +
     '</div>'
   );
 
@@ -1018,6 +1021,15 @@ document.addEventListener('click', function(e){
       state.sitesLoaded = false;
       renderDetail(d.site, false);
       toast(d.site.status==='completed' ? '施工完了にしました' : '施工中に戻しました');
+    });
+    return;
+  }
+  if(action==='delete-site'){
+    if(!confirm('「'+btn.dataset.name+'」の記録を削除します。写真も含めて元に戻せません。よろしいですか？')) return;
+    apiDelete('/api/sites/'+btn.dataset.id).then(function(){
+      state.sitesLoaded = false;
+      toast('現場の記録を削除しました');
+      navigate('/list');
     });
     return;
   }
