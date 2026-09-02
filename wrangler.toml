@@ -11,7 +11,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "fieldwatch-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "3910c631-e87f-4112-9c96-29dd98304317"
 
 # R2 bucket for before/after photos — create a bucket (any name) and
 # put that name here.
