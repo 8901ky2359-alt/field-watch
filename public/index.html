@@ -28,7 +28,7 @@ body{
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;
   font-size:16px;
   line-height:1.5;
-  padding-bottom:76px;
+  padding-bottom:24px;
   -webkit-tap-highlight-color:transparent;
 }
 button,input,select,textarea{font-family:inherit;}
@@ -43,6 +43,28 @@ a{color:var(--green-dark);}
 .topbar .brand{font-size:18px;font-weight:800;letter-spacing:.02em;}
 .topbar .brand small{display:block;font-size:11px;font-weight:600;color:#b7e2c6;letter-spacing:.05em;}
 .view-mode-flag{background:var(--red);color:#fff;font-size:11px;font-weight:800;padding:4px 8px;border:2px solid var(--red-dark);}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+
+.menu-toggle{
+  background:none;border:2px solid #fff;color:#fff;
+  width:40px;height:40px;padding:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  cursor:pointer;flex-shrink:0;
+}
+.menu-toggle span{display:block;width:20px;height:2px;background:#fff;}
+
+.mobile-menu{
+  position:absolute;top:100%;right:0;z-index:60;
+  width:220px;background:#fff;border:3px solid var(--ink);border-top:none;
+  display:none;
+}
+.mobile-menu.open{display:block;}
+.mobile-menu button{
+  display:block;width:100%;text-align:left;background:#fff;border:none;border-bottom:2px solid var(--line-soft);
+  padding:14px 16px;font-size:15px;font-weight:800;color:var(--ink);cursor:pointer;
+}
+.mobile-menu button:last-child{border-bottom:none;}
+.mobile-menu button.active{background:var(--green);color:#fff;}
 main{max-width:720px;margin:0 auto;padding:16px;}
 .screen{display:none;}
 .screen.active{display:block;}
@@ -168,23 +190,8 @@ main{max-width:720px;margin:0 auto;padding:16px;}
 .info-grid dd{color:var(--ink);}
 .notes-box{background:var(--panel);border:2px solid var(--ink);padding:12px;white-space:pre-wrap;font-size:14px;margin:10px 0 16px;}
 
-/* ---- bottom nav (mobile) ---- */
-.bottom-nav{
-  position:fixed;left:0;right:0;bottom:0;z-index:50;
-  display:flex;background:#fff;border-top:3px solid var(--ink);
-  max-width:720px;margin:0 auto;
-}
-.nav-item{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  min-height:64px;background:#fff;border:none;border-right:2px solid var(--line-soft);
-  font-size:12px;font-weight:800;color:var(--ink-soft);cursor:pointer;
-}
-.nav-item:last-child{border-right:none;}
-.nav-item .ico{width:22px;height:22px;display:block;}
-.nav-item.active{color:var(--green-dark);background:var(--green-tint);}
-
 .toast{
-  position:fixed;left:50%;bottom:90px;transform:translateX(-50%);
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
   background:var(--ink);color:#fff;padding:10px 16px;font-size:13px;font-weight:700;
   border:2px solid #000;z-index:100;max-width:90vw;text-align:center;display:none;
 }
@@ -202,8 +209,7 @@ main{max-width:720px;margin:0 auto;padding:16px;}
     grid-template-columns:240px 1fr 460px;
     padding-bottom:0;
   }
-  .bottom-nav{display:none;}
-  .toast{bottom:24px;}
+  .menu-toggle,.mobile-menu{display:none;}
 
   .desktop-sidebar{
     display:flex;flex-direction:column;
@@ -244,7 +250,15 @@ main{max-width:720px;margin:0 auto;padding:16px;}
 <div class="mobile-shell">
 <header class="topbar">
   <div class="brand">FieldWatch<small>施工記録管理</small></div>
-  <span id="viewModeFlag" class="view-mode-flag" style="display:none;">閲覧モード</span>
+  <div class="topbar-right">
+    <span id="viewModeFlag" class="view-mode-flag" style="display:none;">閲覧モード</span>
+    <button type="button" class="menu-toggle" id="menuToggle" aria-label="メニュー"><span></span><span></span><span></span></button>
+  </div>
+  <nav class="mobile-menu" id="mobileMenu">
+    <button data-action="nav" data-target="home">ホーム</button>
+    <button data-action="nav" data-target="record">記録する</button>
+    <button data-action="nav" data-target="list">一覧</button>
+  </nav>
 </header>
 
 <main id="screens">
@@ -370,18 +384,6 @@ main{max-width:720px;margin:0 auto;padding:16px;}
 </main>
 </div>
 
-<nav class="bottom-nav">
-  <button class="nav-item" data-action="nav" data-target="home" id="nav-home">
-    <span>ホーム</span>
-  </button>
-  <button class="nav-item" data-action="nav" data-target="record" id="nav-record">
-    <span>記録</span>
-  </button>
-  <button class="nav-item" data-action="nav" data-target="list" id="nav-list">
-    <span>一覧</span>
-  </button>
-</nav>
-
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -485,6 +487,7 @@ function showScreen(name){
     el.classList.toggle('active', el.dataset.target === name);
   });
   document.getElementById('viewModeFlag').style.display = 'none';
+  document.getElementById('mobileMenu').classList.remove('open');
   window.scrollTo(0,0);
   var screensEl = document.getElementById('screens');
   if(screensEl) screensEl.scrollTo(0,0);
@@ -1042,6 +1045,18 @@ document.getElementById('siteForm').addEventListener('submit', function(e){
 window.addEventListener('resize', function(){
   if(state.desktopMap) state.desktopMap.invalidateSize();
   if(state.map) state.map.invalidateSize();
+});
+
+// ---------------- mobile hamburger menu ----------------
+document.getElementById('menuToggle').addEventListener('click', function(e){
+  e.stopPropagation();
+  document.getElementById('mobileMenu').classList.toggle('open');
+});
+document.addEventListener('click', function(e){
+  var menu = document.getElementById('mobileMenu');
+  if(!menu.classList.contains('open')) return;
+  if(menu.contains(e.target) || e.target === document.getElementById('menuToggle')) return;
+  menu.classList.remove('open');
 });
 
 // ---------------- boot ----------------
