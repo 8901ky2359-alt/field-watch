@@ -18,6 +18,7 @@ CREATE TABLE sites (
   notes         TEXT NOT NULL DEFAULT '',
   status        TEXT NOT NULL DEFAULT 'in_progress', -- 'in_progress' | 'completed'
   pair_count    INTEGER NOT NULL DEFAULT 1,
+  completed_at  TEXT,                             -- set when status becomes 'completed', cleared otherwise
   created_at    TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
   updated_at    TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
 );
@@ -40,10 +41,10 @@ CREATE INDEX idx_sites_status ON sites(status);
 -- サンプルデータ（プロトタイプ確認用の3現場）
 -- ==========================================================
 
-INSERT INTO sites (id, name, map_url, lat, lng, address, date_mode, start_date, end_date, work_days, work_types, notes, status, pair_count, created_at, updated_at) VALUES
-('site-sample-1', '大崎第一太陽光発電所', 'https://maps.google.com/?q=35.0116,136.7686', 35.0116, 136.7686, '三重県津市大崎町123', 'range', '2026-08-03', '2026-08-05', '[]', '["除草作業","整線作業"]', 'パネル周辺の雑草が高め。次回は南側から着手。', 'completed', 4, '2026-08-01 09:00:00', '2026-08-05 17:30:00'),
-('site-sample-2', '木更津メガソーラー第2区画', 'https://maps.google.com/?q=35.3706,139.9161', 35.3706, 139.9161, '千葉県木更津市畑沢456', 'days', '', '', '["2026-08-20","2026-08-21","2026-08-25"]', '["アース線設置","運搬"]', '飛び日程での作業。8/22-24は雨天のため中止。', 'in_progress', 6, '2026-08-19 08:15:00', '2026-08-25 16:00:00'),
-('site-sample-3', '佐倉発電所 増設エリア', 'https://maps.google.com/?q=35.7211,140.2246', 35.7211, 140.2246, '千葉県佐倉市寺崎789', 'range', '2026-08-27', '2026-08-29', '[]', '["パネル設置","整線作業","運搬"]', '増設分のパネル設置。搬入路の確保済み。', 'in_progress', 8, '2026-08-26 07:45:00', '2026-08-29 13:20:00');
+INSERT INTO sites (id, name, map_url, lat, lng, address, date_mode, start_date, end_date, work_days, work_types, notes, status, pair_count, completed_at, created_at, updated_at) VALUES
+('site-sample-1', '大崎第一太陽光発電所', 'https://maps.google.com/?q=35.0116,136.7686', 35.0116, 136.7686, '三重県津市大崎町123', 'range', '2026-08-03', '2026-08-05', '[]', '["除草作業","整線作業"]', 'パネル周辺の雑草が高め。次回は南側から着手。', 'completed', 4, '2026-08-05 17:30:00', '2026-08-01 09:00:00', '2026-08-05 17:30:00'),
+('site-sample-2', '木更津メガソーラー第2区画', 'https://maps.google.com/?q=35.3706,139.9161', 35.3706, 139.9161, '千葉県木更津市畑沢456', 'days', '', '', '["2026-08-20","2026-08-21","2026-08-25"]', '["アース線設置","運搬"]', '飛び日程での作業。8/22-24は雨天のため中止。', 'in_progress', 6, NULL, '2026-08-19 08:15:00', '2026-08-25 16:00:00'),
+('site-sample-3', '佐倉発電所 増設エリア', 'https://maps.google.com/?q=35.7211,140.2246', 35.7211, 140.2246, '千葉県佐倉市寺崎789', 'range', '2026-08-27', '2026-08-29', '[]', '["パネル設置","整線作業","運搬"]', '増設分のパネル設置。搬入路の確保済み。', 'in_progress', 8, NULL, '2026-08-26 07:45:00', '2026-08-29 13:20:00');
 
 -- 施工完了現場(site-sample-1)は撮影済みのビフォーアフター写真4組が揃っている想定
 INSERT INTO photos (id, site_id, pair_index, side, object_key, file_name, created_at) VALUES

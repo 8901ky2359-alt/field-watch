@@ -7,9 +7,10 @@ export async function onRequestPost(context) {
 
   const now = new Date().toISOString();
   const nextStatus = existing.status === 'completed' ? 'in_progress' : 'completed';
+  const completedAt = nextStatus === 'completed' ? now : null;
 
-  await env.DB.prepare('UPDATE sites SET status = ?, updated_at = ? WHERE id = ?')
-    .bind(nextStatus, now, params.id)
+  await env.DB.prepare('UPDATE sites SET status = ?, completed_at = ?, updated_at = ? WHERE id = ?')
+    .bind(nextStatus, completedAt, now, params.id)
     .run();
 
   const site = await loadSiteWithPhotos(env.DB, params.id);

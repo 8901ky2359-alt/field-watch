@@ -45,6 +45,7 @@ export function serializeSite(row, photos) {
     completedPairs,
     capturedShots,
     pairs,
+    completedAt: row.completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

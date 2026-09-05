@@ -464,6 +464,14 @@ function formatWorkDate(site){
 }
 function statusLabel(s){ return s==='completed' ? '施工完了' : '施工中'; }
 function imgUrl(key){ return '/api/image?key=' + encodeURIComponent(key); }
+function daysSince(timestamp){
+  if(!timestamp) return null;
+  var iso = timestamp.indexOf('T')===-1 ? timestamp.replace(' ', 'T') : timestamp;
+  if(!/[Zz]|[+-]\d\d:?\d\d$/.test(iso)) iso += 'Z';
+  var then = new Date(iso);
+  if(isNaN(then.getTime())) return null;
+  return Math.max(0, Math.floor((Date.now() - then.getTime()) / 86400000));
+}
 function toast(msg, isErr){
   var t = document.getElementById('toast');
   t.textContent = msg;
@@ -930,6 +938,7 @@ function renderDetail(s, viewMode){
       '<dt>作業日</dt><dd>'+esc(formatWorkDate(s))+'</dd>' +
       '<dt>作業内容</dt><dd class="chips-inline">'+typesHtml+'</dd>' +
       '<dt>撮影状況</dt><dd>'+s.completedPairs+' / '+s.pairCount+' 組完了</dd>' +
+      (s.status==='completed' && s.completedAt ? '<dt>経過日数</dt><dd>施工完了から '+daysSince(s.completedAt)+' 日経過</dd>' : '') +
     '</dl>' +
     (s.notes ? '<div class="notes-box">'+esc(s.notes)+'</div>' : '') +
     adminActions +
