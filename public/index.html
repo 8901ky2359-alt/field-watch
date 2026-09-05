@@ -169,6 +169,17 @@ main{max-width:720px;margin:0 auto;padding:16px;}
 .slot-actions-row input[type=file]{display:none;}
 .slot-actions-row .del{background:#fff;color:var(--red-dark);}
 
+.bulk-photo-actions{background:var(--panel);border:2px solid var(--ink);padding:12px;margin-bottom:14px;}
+.bulk-review-panel{background:var(--panel);border:2px solid var(--ink);padding:12px;margin-bottom:14px;}
+.bulk-review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
+.bulk-review-item{border:2px solid var(--ink);}
+.bulk-review-item img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;}
+.bulk-review-item .bri-toggle{display:flex;border-top:2px solid var(--ink);}
+.bulk-review-item .bri-toggle button{flex:1;border:none;background:#fff;padding:6px 2px;font-size:11px;font-weight:800;color:var(--ink-soft);cursor:pointer;border-right:1px solid var(--ink);}
+.bulk-review-item .bri-toggle button:last-child{border-right:none;}
+.bulk-review-item .bri-toggle button.active{background:var(--green);color:#fff;}
+.bulk-review-item .bri-toggle button.active[data-side="after"]{background:var(--green-dark);}
+
 .save-bar{background:var(--bg);padding:12px 0 4px;margin-top:8px;}
 .savebar-msg{font-size:13px;font-weight:700;text-align:center;margin-top:8px;min-height:18px;}
 .savebar-msg.ok{color:var(--green-dark);}
@@ -355,6 +366,27 @@ main{max-width:720px;margin:0 auto;padding:16px;}
     </form>
 
     <div class="section-title">ビフォーアフター写真</div>
+    <div id="bulkPhotoActions" class="bulk-photo-actions" style="display:none;">
+      <div class="hint">まとめて登録：Before/Afterを分けて選ぶか、混在のまま選んで後から振り分けられます</div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button type="button" class="btn btn-outline btn-sm" data-action="bulk-pick" data-mode="separate-before">Beforeをまとめて選択</button>
+        <button type="button" class="btn btn-outline btn-sm" data-action="bulk-pick" data-mode="separate-after">Afterをまとめて選択</button>
+      </div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button type="button" class="btn btn-primary btn-sm" data-action="bulk-pick" data-mode="mixed">まとめて報告（Before/After混在でOK）</button>
+      </div>
+      <input type="file" id="bulkFileInput" accept="image/*" multiple style="display:none;">
+    </div>
+
+    <div id="bulkReviewPanel" class="bulk-review-panel" style="display:none;">
+      <div class="section-title">アップロード内容の確認（タップでBefore/After切り替え）</div>
+      <div id="bulkReviewGrid" class="bulk-review-grid"></div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button type="button" class="btn btn-primary" data-action="bulk-confirm">この内容でアップロード</button>
+        <button type="button" class="btn btn-outline" data-action="bulk-cancel">キャンセル</button>
+      </div>
+    </div>
+
     <div id="photoGridWrap">
       <div class="empty-note">先に現場情報を保存すると、撮影・アップロードができるようになります。</div>
     </div>
@@ -402,7 +434,9 @@ var state = {
   map: null,
   mapMarkers: [],
   desktopMap: null,
-  desktopMapMarkers: []
+  desktopMapMarkers: [],
+  bulkMode: null,
+  bulkFiles: null
 };
 
 // ---------------- API ----------------
@@ -727,6 +761,7 @@ function initRecordScreen(id){
   loadSites();
   document.getElementById('saveMsg').textContent = '';
   document.getElementById('mapResolveStatus').innerHTML = '';
+  clearBulkReview();
   if(!id){
     state.editing = blankForm();
     document.getElementById('recordScreenTitle').textContent = '新規現場の記録';
@@ -802,10 +837,13 @@ function renderWorkTypesList(){
 function renderPhotoGrid(){
   var wrap = document.getElementById('photoGridWrap');
   var s = state.editing;
+  var bulkActions = document.getElementById('bulkPhotoActions');
   if(!s.id){
     wrap.innerHTML = '<div class="empty-note">先に現場情報を保存すると、撮影・アップロードができるようになります。</div>';
+    bulkActions.style.display = 'none';
     return;
   }
+  bulkActions.style.display = 'block';
   var pairs = s.pairs && s.pairs.length ? s.pairs : buildEmptyPairs(s.pairCount);
   wrap.innerHTML = pairs.map(function(p){
     return '' +
@@ -845,20 +883,108 @@ function photoSlotHtml(siteId, pairIndex, side, photo){
       '</div>' +
     '</div>';
 }
-window.fwHandlePhotoFile = function(inputEl, siteId, pairIndex, side){
-  var file = inputEl.files && inputEl.files[0];
-  if(!file) return;
+function uploadOnePhoto(siteId, pairIndex, side, file){
   var fd = new FormData();
   fd.append('pairIndex', String(pairIndex));
   fd.append('side', side);
   fd.append('file', file);
+  return apiUpload('/api/sites/'+siteId+'/photo', fd);
+}
+window.fwHandlePhotoFile = function(inputEl, siteId, pairIndex, side){
+  var file = inputEl.files && inputEl.files[0];
+  if(!file) return;
   toast('アップロード中...');
-  apiUpload('/api/sites/'+siteId+'/photo', fd).then(function(d){
+  uploadOnePhoto(siteId, pairIndex, side, file).then(function(d){
     state.editing = d.site;
     renderPhotoGrid();
     toast('写真を保存しました');
   }).catch(function(e){ toast('アップロードに失敗しました: '+e.message, true); });
 };
+
+// ---------------- bulk photo upload ----------------
+function bulkUploadSequential(files, side){
+  var siteId = state.editing.id;
+  var pairCount = state.editing.pairCount;
+  var toUpload = files.slice(0, pairCount);
+  var overflow = files.length - toUpload.length;
+  var uploaded = 0;
+
+  function next(i){
+    if(i >= toUpload.length){
+      state.sitesLoaded = false;
+      renderPhotoGrid();
+      var msg = uploaded + '件アップロードしました';
+      if(overflow > 0) msg += '（撮影箇所数を超えた ' + overflow + '件は登録されませんでした）';
+      toast(msg, overflow > 0);
+      return;
+    }
+    toast('アップロード中... (' + (i+1) + '/' + toUpload.length + ')');
+    uploadOnePhoto(siteId, i + 1, side, toUpload[i]).then(function(d){
+      state.editing = d.site;
+      uploaded++;
+      next(i + 1);
+    }).catch(function(e){
+      toast('アップロードに失敗しました(' + (i+1) + '件目): ' + e.message, true);
+    });
+  }
+  next(0);
+}
+
+function renderBulkReview(){
+  var panel = document.getElementById('bulkReviewPanel');
+  var grid = document.getElementById('bulkReviewGrid');
+  if(!state.bulkFiles || !state.bulkFiles.length){ panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  grid.innerHTML = state.bulkFiles.map(function(item, i){
+    return '' +
+      '<div class="bulk-review-item">' +
+        '<img src="'+item.url+'" alt="">' +
+        '<div class="bri-toggle">' +
+          '<button type="button" data-action="bulk-toggle-side" data-index="'+i+'" data-side="before" class="'+(item.side==='before'?'active':'')+'">Before</button>' +
+          '<button type="button" data-action="bulk-toggle-side" data-index="'+i+'" data-side="after" class="'+(item.side==='after'?'active':'')+'">After</button>' +
+        '</div>' +
+      '</div>';
+  }).join('');
+}
+function clearBulkReview(){
+  (state.bulkFiles || []).forEach(function(item){ URL.revokeObjectURL(item.url); });
+  state.bulkFiles = null;
+  renderBulkReview();
+}
+function confirmBulkReview(){
+  var siteId = state.editing.id;
+  var pairCount = state.editing.pairCount;
+  var befores = state.bulkFiles.filter(function(it){ return it.side==='before'; }).map(function(it){ return it.file; });
+  var afters = state.bulkFiles.filter(function(it){ return it.side==='after'; }).map(function(it){ return it.file; });
+  var beforeToUpload = befores.slice(0, pairCount);
+  var afterToUpload = afters.slice(0, pairCount);
+  var overflow = (befores.length - beforeToUpload.length) + (afters.length - afterToUpload.length);
+  var jobs = beforeToUpload.map(function(f, i){ return { pairIndex: i+1, side: 'before', file: f }; })
+    .concat(afterToUpload.map(function(f, i){ return { pairIndex: i+1, side: 'after', file: f }; }));
+  var uploaded = 0;
+
+  function next(i){
+    if(i >= jobs.length){
+      clearBulkReview();
+      state.sitesLoaded = false;
+      renderPhotoGrid();
+      var msg = uploaded + '件アップロードしました';
+      if(overflow > 0) msg += '（撮影箇所数を超えた ' + overflow + '件は登録されませんでした）';
+      toast(msg, overflow > 0);
+      return;
+    }
+    toast('アップロード中... (' + (i+1) + '/' + jobs.length + ')');
+    var j = jobs[i];
+    uploadOnePhoto(siteId, j.pairIndex, j.side, j.file).then(function(d){
+      state.editing = d.site;
+      uploaded++;
+      next(i + 1);
+    }).catch(function(e){
+      toast('アップロードに失敗しました(' + (i+1) + '件目): ' + e.message, true);
+    });
+  }
+  next(0);
+}
 
 function collectFormPayload(){
   return {
@@ -1064,6 +1190,25 @@ document.addEventListener('click', function(e){
     }).catch(function(e){ toast('削除に失敗しました: '+e.message, true); });
     return;
   }
+  if(action==='bulk-pick'){
+    state.bulkMode = btn.dataset.mode;
+    document.getElementById('bulkFileInput').click();
+    return;
+  }
+  if(action==='bulk-toggle-side'){
+    var idx = parseInt(btn.dataset.index, 10);
+    if(state.bulkFiles && state.bulkFiles[idx]) state.bulkFiles[idx].side = btn.dataset.side;
+    renderBulkReview();
+    return;
+  }
+  if(action==='bulk-confirm'){
+    confirmBulkReview();
+    return;
+  }
+  if(action==='bulk-cancel'){
+    clearBulkReview();
+    return;
+  }
 });
 
 document.getElementById('siteForm').addEventListener('submit', function(e){
@@ -1077,6 +1222,23 @@ window.addEventListener('resize', function(){
 });
 
 // ---------------- mobile hamburger menu ----------------
+document.getElementById('bulkFileInput').addEventListener('change', function(){
+  var files = Array.prototype.slice.call(this.files || []);
+  this.value = '';
+  if(!files.length) return;
+
+  if(state.bulkMode === 'separate-before'){
+    bulkUploadSequential(files, 'before');
+  } else if(state.bulkMode === 'separate-after'){
+    bulkUploadSequential(files, 'after');
+  } else if(state.bulkMode === 'mixed'){
+    state.bulkFiles = files.map(function(file, i){
+      return { file: file, url: URL.createObjectURL(file), side: i % 2 === 0 ? 'before' : 'after' };
+    });
+    renderBulkReview();
+  }
+});
+
 document.getElementById('menuToggle').addEventListener('click', function(e){
   e.stopPropagation();
   document.getElementById('mobileMenu').classList.toggle('open');
