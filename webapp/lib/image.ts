@@ -6,8 +6,8 @@ export const QUALITY_PARAMS: Record<
   Quality,
   { captureWidth: number; captureHeight: number; maxWidth: number; jpegQuality: number }
 > = {
-  high: { captureWidth: 2560, captureHeight: 1440, maxWidth: 1920, jpegQuality: 0.9 },
-  standard: { captureWidth: 1280, captureHeight: 960, maxWidth: 1280, jpegQuality: 0.78 },
+  high: { captureWidth: 3840, captureHeight: 2160, maxWidth: 2560, jpegQuality: 0.92 },
+  standard: { captureWidth: 1920, captureHeight: 1440, maxWidth: 1600, jpegQuality: 0.85 },
 };
 
 export function getVideoConstraints(quality: Quality): MediaStreamConstraints {

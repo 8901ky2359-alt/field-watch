@@ -57,9 +57,9 @@ export async function clearProject(): Promise<void> {
 }
 
 export function loadQuality(): 'standard' | 'high' {
-  if (typeof window === 'undefined') return 'standard';
+  if (typeof window === 'undefined') return 'high';
   const v = window.localStorage.getItem('ba-quality');
-  return v === 'high' ? 'high' : 'standard';
+  return v === 'standard' ? 'standard' : 'high';
 }
 
 export function saveQuality(q: 'standard' | 'high'): void {

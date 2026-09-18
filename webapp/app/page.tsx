@@ -24,7 +24,7 @@ type Side = 'before' | 'after';
 export default function Home() {
   const [ready, setReady] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
-  const [quality, setQuality] = useState<Quality>('standard');
+  const [quality, setQuality] = useState<Quality>('high');
   const [cameraTarget, setCameraTarget] = useState<{ index: number; side: Side } | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [busySlots, setBusySlots] = useState<Set<string>>(new Set());
