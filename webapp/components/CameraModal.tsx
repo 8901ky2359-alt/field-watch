@@ -191,38 +191,38 @@ export default function CameraModal({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black">
-      <div className="flex items-center justify-between border-b-2 border-white/20 px-4 py-3 text-white">
-        <button type="button" onClick={onClose} className="min-h-[40px] px-2 text-sm font-bold">
-          閉じる
-        </button>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setShutterSound((v) => !v)}
-            className={`min-h-[36px] border-2 border-white px-2 text-xs font-bold ${
-              shutterSound ? 'bg-white text-black' : 'text-white'
-            }`}
-          >
-            音{shutterSound ? 'ON' : 'OFF'}
-          </button>
-          {torchSupported && mode === 'live' && (
-            <button
-              type="button"
-              onClick={toggleTorch}
-              className={`min-h-[36px] border-2 border-white px-2 text-xs font-bold ${
-                torchOn ? 'bg-white text-black' : 'text-white'
-              }`}
-            >
-              ライト{torchOn ? 'ON' : 'OFF'}
-            </button>
+      {/*
+        Always mounted (just hidden outside live/review) so videoRef is
+        attached to a real DOM node before getUserMedia resolves — the
+        stream used to be assigned to a ref that didn't exist yet because
+        this block only rendered once `mode` became 'live'. Pinned near the
+        top so the viewfinder stays visible while the thumb works down in
+        the control zone below.
+      */}
+      <div className="flex justify-center px-3 pt-3">
+        <div
+          className={`relative w-full max-w-md overflow-hidden border-2 border-white ${
+            mode === 'live' || mode === 'review' ? '' : 'hidden'
+          }`}
+          style={{ aspectRatio: '5 / 4' }}
+          onClick={mode === 'live' ? handleTapFocus : undefined}
+        >
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            className={`h-full w-full object-cover ${mode === 'review' ? 'hidden' : ''}`}
+          />
+          {mode === 'review' && captured && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={captured} alt="撮影結果" className="h-full w-full object-cover" />
           )}
-          <button
-            type="button"
-            onClick={() => onQualityChange(quality === 'high' ? 'standard' : 'high')}
-            className="min-h-[36px] border-2 border-white px-2 text-xs font-bold text-white"
-          >
-            {quality === 'high' ? '高画質' : '標準'}
-          </button>
+          {focusPoint && (
+            <div
+              className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 border-2 border-yellow-300"
+              style={{ left: focusPoint.x, top: focusPoint.y }}
+            />
+          )}
         </div>
       </div>
 
@@ -259,48 +259,66 @@ export default function CameraModal({
             />
           </div>
         )}
-
-        {/*
-          Always mounted (just hidden outside live/review) so videoRef is
-          attached to a real DOM node before getUserMedia resolves — the
-          stream used to be assigned to a ref that didn't exist yet because
-          this block only rendered once `mode` became 'live'.
-        */}
-        <div
-          className={`relative w-full max-w-md overflow-hidden border-2 border-white ${
-            mode === 'live' || mode === 'review' ? '' : 'hidden'
-          }`}
-          style={{ aspectRatio: '5 / 4' }}
-          onClick={mode === 'live' ? handleTapFocus : undefined}
-        >
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className={`h-full w-full object-cover ${mode === 'review' ? 'hidden' : ''}`}
-          />
-          {mode === 'review' && captured && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={captured} alt="撮影結果" className="h-full w-full object-cover" />
-          )}
-          {focusPoint && (
-            <div
-              className="pointer-events-none absolute h-16 w-16 -translate-x-1/2 -translate-y-1/2 border-2 border-yellow-300"
-              style={{ left: focusPoint.x, top: focusPoint.y }}
-            />
-          )}
-        </div>
       </div>
 
+      {/* every control lives down here, within thumb reach when holding the phone one-handed */}
       <div className="border-t-2 border-white/20 p-4">
         {mode === 'live' && (
+          <>
+            <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-[40px] border-2 border-white px-3 text-xs font-bold text-white"
+              >
+                閉じる
+              </button>
+              <button
+                type="button"
+                onClick={() => setShutterSound((v) => !v)}
+                className={`min-h-[40px] border-2 border-white px-3 text-xs font-bold ${
+                  shutterSound ? 'bg-white text-black' : 'text-white'
+                }`}
+              >
+                音{shutterSound ? 'ON' : 'OFF'}
+              </button>
+              {torchSupported && (
+                <button
+                  type="button"
+                  onClick={toggleTorch}
+                  className={`min-h-[40px] border-2 border-white px-3 text-xs font-bold ${
+                    torchOn ? 'bg-white text-black' : 'text-white'
+                  }`}
+                >
+                  ライト{torchOn ? 'ON' : 'OFF'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onQualityChange(quality === 'high' ? 'standard' : 'high')}
+                className="min-h-[40px] border-2 border-white px-3 text-xs font-bold text-white"
+              >
+                {quality === 'high' ? '高画質' : '標準'}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={capture}
+              className="mx-auto flex min-h-[72px] min-w-[72px] items-center justify-center border-4 border-white bg-white/10"
+              aria-label="シャッター"
+            >
+              <span className="block h-12 w-12 bg-white" />
+            </button>
+          </>
+        )}
+
+        {(mode === 'starting' || mode === 'fallback' || mode === 'error') && (
           <button
             type="button"
-            onClick={capture}
-            className="mx-auto flex min-h-[72px] min-w-[72px] items-center justify-center border-4 border-white bg-white/10"
-            aria-label="シャッター"
+            onClick={onClose}
+            className="min-h-[52px] w-full border-2 border-white text-base font-bold text-white"
           >
-            <span className="block h-12 w-12 bg-white" />
+            閉じる
           </button>
         )}
         {mode === 'review' && (
