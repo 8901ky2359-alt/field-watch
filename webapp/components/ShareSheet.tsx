@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import type { Project } from '@/lib/types';
-import { buildCompareImage, dataUrlToFile } from '@/lib/image';
+import { buildCompareImage } from '@/lib/image';
+import { urlToFile } from '@/lib/cloud';
 import { buildShareText, fileNameFor, shareFiles } from '@/lib/share';
 
 type Key = string; // `${index}-${side}`
@@ -61,7 +62,9 @@ export default function ShareSheet({ project, onClose }: { project: Project; onC
     if (!targets.length) return;
     setBusyMsg('共有の準備をしています…');
     try {
-      const files = targets.map((t) => dataUrlToFile(t.dataUrl, fileNameFor(project, t.index, t.side)));
+      const files = await Promise.all(
+        targets.map((t) => urlToFile(t.dataUrl, fileNameFor(project, t.index, t.side)))
+      );
       const text = buildShareText(Array.from(new Set(targets.map((t) => t.index))).sort((a, b) => a - b));
       const result = await shareFiles(files, text);
       notify(result === 'downloaded' ? `${files.length}枚をダウンロードしました` : `${files.length}枚を共有しました`);
@@ -83,7 +86,7 @@ export default function ShareSheet({ project, onClose }: { project: Project; onC
         if (!item.before || !item.after) continue;
         const heading = `${project.name ? project.name + ' ' : ''}${n}番`;
         const compareDataUrl = await buildCompareImage(item.before.dataUrl, item.after.dataUrl, heading);
-        files.push(dataUrlToFile(compareDataUrl, fileNameFor(project, n, 'compare')));
+        files.push(await urlToFile(compareDataUrl, fileNameFor(project, n, 'compare')));
       }
       const text = buildShareText(pairIndexes);
       const result = await shareFiles(files, text);

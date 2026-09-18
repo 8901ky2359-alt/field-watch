@@ -8,6 +8,7 @@ export type Item = {
 };
 
 export type Project = {
+  id: string | null; // set once shared to the cloud; null means local-only
   name: string;
   count: number;
   items: Item[];
@@ -22,6 +23,7 @@ export function emptyItem(): Item {
 
 export function makeProject(count: number): Project {
   return {
+    id: null,
     name: '',
     count,
     items: Array.from({ length: count }, emptyItem),

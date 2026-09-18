@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Project } from '@/lib/types';
 import PhotoSlot from './PhotoSlot';
 
@@ -8,8 +8,10 @@ type Side = 'before' | 'after';
 
 export default function WorkScreen({
   project,
+  shareUrl,
   onNameChange,
   onNew,
+  onRefresh,
   onCapture,
   onPickFile,
   onDeletePhoto,
@@ -20,8 +22,10 @@ export default function WorkScreen({
   busySlots,
 }: {
   project: Project;
+  shareUrl: string | null;
   onNameChange: (name: string) => void;
   onNew: () => void;
+  onRefresh: () => void;
   onCapture: (index: number, side: Side) => void;
   onPickFile: (index: number, side: Side, file: File) => void;
   onDeletePhoto: (index: number, side: Side) => void;
@@ -31,6 +35,8 @@ export default function WorkScreen({
   onOpenShareSheet: () => void;
   busySlots: Set<string>;
 }) {
+  const [copied, setCopied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const completed = useMemo(
     () => project.items.filter((it) => it.before && it.after).length,
     [project.items]
@@ -47,6 +53,27 @@ export default function WorkScreen({
     }
   }
 
+  async function handleCopyLink() {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      window.prompt('このリンクをコピーしてください', shareUrl);
+      return;
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <div className="pb-24">
       <div className="sticky top-0 z-10 border-b-2 border-slate-900 bg-white px-4 py-3">
@@ -58,6 +85,16 @@ export default function WorkScreen({
             placeholder="現場名（任意）"
             className="min-h-[44px] flex-1 border-2 border-slate-900 px-2 text-sm font-bold text-slate-900"
           />
+          {shareUrl && (
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="min-h-[44px] border-2 border-slate-900 bg-white px-3 text-sm font-bold text-slate-900 disabled:opacity-40"
+            >
+              {refreshing ? '更新中' : '更新'}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleNew}
@@ -66,6 +103,19 @@ export default function WorkScreen({
             新規
           </button>
         </div>
+
+        {shareUrl && (
+          <div className="mt-2 flex items-center gap-2 border-2 border-before bg-before-light px-2 py-1.5">
+            <span className="flex-1 truncate text-xs font-bold text-slate-700">{shareUrl}</span>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="min-h-[32px] shrink-0 border-2 border-before bg-before px-2 text-xs font-bold text-white"
+            >
+              {copied ? 'コピーしました' : '共有リンクをコピー'}
+            </button>
+          </div>
+        )}
 
         <div className="mt-3 h-3 w-full border-2 border-slate-900 bg-slate-100">
           <div className="h-full bg-after" style={{ width: `${pct}%` }} />
