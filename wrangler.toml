@@ -2,19 +2,8 @@ name = "field-watch"
 main = "worker/index.js"
 compatibility_date = "2024-09-23"
 
+# Fully static export (Next.js `output: 'export'`, built from webapp/) —
+# no D1/R2 bindings needed, this app has no backend.
 [assets]
-directory = "public"
+directory = "webapp/out"
 binding = "ASSETS"
-
-# D1 database — replace database_id with the ID shown on your D1
-# database's detail page in the Cloudflare dashboard.
-[[d1_databases]]
-binding = "DB"
-database_name = "fieldwatch-db"
-database_id = "3910c631-e87f-4112-9c96-29dd98304317"
-
-# R2 bucket for before/after photos — create a bucket (any name) and
-# put that name here.
-[[r2_buckets]]
-binding = "PHOTOS"
-bucket_name = "fieldwatch-photos"
