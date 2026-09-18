@@ -223,6 +223,15 @@ export default function CameraModal({
               style={{ left: focusPoint.x, top: focusPoint.y }}
             />
           )}
+          {mode === 'live' && (
+            <button
+              type="button"
+              onClick={() => onQualityChange(quality === 'high' ? 'standard' : 'high')}
+              className="absolute right-2 top-2 min-h-[32px] border-2 border-white bg-black/50 px-2 text-xs font-bold text-white"
+            >
+              {quality === 'high' ? '高画質' : '標準'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -264,19 +273,12 @@ export default function CameraModal({
       {/* every control lives down here, within thumb reach when holding the phone one-handed */}
       <div className="border-t-2 border-white/20 p-4">
         {mode === 'live' && (
-          <>
-            <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-h-[40px] border-2 border-white px-3 text-xs font-bold text-white"
-              >
-                閉じる
-              </button>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShutterSound((v) => !v)}
-                className={`min-h-[40px] border-2 border-white px-3 text-xs font-bold ${
+                className={`min-h-[48px] min-w-[48px] border-2 border-white px-3 text-xs font-bold ${
                   shutterSound ? 'bg-white text-black' : 'text-white'
                 }`}
               >
@@ -286,7 +288,7 @@ export default function CameraModal({
                 <button
                   type="button"
                   onClick={toggleTorch}
-                  className={`min-h-[40px] border-2 border-white px-3 text-xs font-bold ${
+                  className={`min-h-[48px] min-w-[48px] border-2 border-white px-3 text-xs font-bold ${
                     torchOn ? 'bg-white text-black' : 'text-white'
                   }`}
                 >
@@ -295,21 +297,21 @@ export default function CameraModal({
               )}
               <button
                 type="button"
-                onClick={() => onQualityChange(quality === 'high' ? 'standard' : 'high')}
-                className="min-h-[40px] border-2 border-white px-3 text-xs font-bold text-white"
+                onClick={onClose}
+                className="min-h-[48px] min-w-[48px] border-2 border-white px-3 text-xs font-bold text-white"
               >
-                {quality === 'high' ? '高画質' : '標準'}
+                閉じる
               </button>
             </div>
             <button
               type="button"
               onClick={capture}
-              className="mx-auto flex min-h-[72px] min-w-[72px] items-center justify-center border-4 border-white bg-white/10"
+              className="flex min-h-[72px] min-w-[72px] shrink-0 items-center justify-center border-4 border-white bg-white/10"
               aria-label="シャッター"
             >
               <span className="block h-12 w-12 bg-white" />
             </button>
-          </>
+          </div>
         )}
 
         {(mode === 'starting' || mode === 'fallback' || mode === 'error') && (
