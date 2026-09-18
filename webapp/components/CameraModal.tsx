@@ -94,15 +94,38 @@ export default function CameraModal({
     if (!shutterSound) return;
     try {
       const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 1200;
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.08);
-      osc.onended = () => ctx.close();
+      const now = ctx.currentTime;
+
+      // a quick mechanical "tick" so it still reads as a shutter…
+      const click = ctx.createOscillator();
+      const clickGain = ctx.createGain();
+      click.type = 'square';
+      click.frequency.value = 2200;
+      clickGain.gain.setValueAtTime(0.12, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+      click.connect(clickGain).connect(ctx.destination);
+      click.start(now);
+      click.stop(now + 0.03);
+
+      // …followed by a playful little coin-chime flourish
+      const notes = [
+        { freq: 988, start: 0.04, dur: 0.09 }, // B5
+        { freq: 1319, start: 0.11, dur: 0.2 }, // E6
+      ];
+      notes.forEach(({ freq, start, dur }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, now + start);
+        gain.gain.exponentialRampToValueAtTime(0.18, now + start + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + start);
+        osc.stop(now + start + dur + 0.02);
+      });
+
+      window.setTimeout(() => ctx.close().catch(() => {}), 450);
     } catch {
       // audio feedback is optional
     }
